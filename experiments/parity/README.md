@@ -1,62 +1,94 @@
 # Computer-use parity experiments
 
-`bench.mjs` measures full reads. `act-bench.mjs` measures the same action sequence inside each engine session. Both use the shared directory lock. Run one benchmark at a time; do not remove a live owner's lock.
+`bench.mjs` measures full reads. `act-bench.mjs` runs the same fixture action sequence inside each engine session. Both use the shared directory lock. Preparation and cleanup also take that lock. Never remove a live owner's lock.
 
 ## Action benchmark
 
+These commands assume an unlocked desktop terminal. For an agent pane in another audit session, use the relay below.
+
 ```sh
+swift build -c release --product OCUActionProbe
+.build/release/OCUActionProbe doctor --json
 node experiments/parity/act-fixture.mjs
 node experiments/parity/act-bench.mjs codex 3 > .build/codex-actions.json
-OCU_BIN='dist/Open Computer Use (Dev).app/Contents/MacOS/OpenComputerUse' \
+OCU_BIN=.build/release/OCUActionProbe \
   node experiments/parity/act-bench.mjs ocu 3 > .build/ocu-actions.json
 node experiments/parity/act-fixture.mjs close
 ```
 
-The development app must have a stable Developer ID signature and both Accessibility and Screen Recording permissions. Do not grant permissions to an unfinished or ad-hoc build. Use `OCU_BIN=ocu` to measure the installed release without replacing it. The OCU benchmark calls the native MCP surface directly: the JS adapter forces action read-back off. The native executable path and the npm launcher both accept `mcp`.
+The preparation script builds the checkout fixture and packages it as `.build/ActionParityFixture.app`. Its distinct display and executable names bypass OCU's name-based synthetic command bridge. The benchmark verifies the exported PID belongs to that exact checkout executable before acting. It retains the fixture's own exported state before and after each sequence.
 
-`OCU_ACTION_READ_BACK=default` is the benchmark default: it leaves the native setting unset. The new native default returns bounded state from cached handles. Use `1` for legacy full-tree/screenshot read-back or `0` for a separate diagnostic run. Visual cursor behavior stays at the engine default. Each row records the action call, a separate full read, errors, state text and the observed effect. An error response's latency does not count as a successful fast action. Explicit reads use each engine's standard full-state API; native OCU also captures its default screenshot. These costs are reported separately, rather than treated as identical read work.
+Each run clears the field, clicks it, presses `x`, inserts a token, sets a replacement value, increments the counter, scrolls and drags inside the pad. It resolves element IDs after reads and scales window-point drag coordinates to PNG/JPEG screenshot pixels. Empty-field rendering is handled explicitly. Text assertions preserve whitespace and punctuation. The same value parser is injected into both engines. Unknown screenshot formats reject the coordinate probe.
 
-The preparation script packages the checkout's fixture under `.build/ActionParityFixture.app`. Its distinct display and executable names bypass OCU's name-based synthetic fixture command bridge. The benchmark verifies the exported PID belongs to that exact checkout executable before acting. It captures the fixture's own exported state before and after the sequence. A prior synthetic run is not evidence of real mouse or keyboard delivery.
+Each row records in-session action time, separate full-read time, errors, state text and observed effect. A fast error is not a successful action. Native explicit reads include the default screenshot; Codex `getAXState` is an AX read. Keep these times separate. Codex is called only through the installed `cu.mjs` skill session. Each Codex benchmark resets that session while holding the shared lock.
 
-Actions target only this fixture. Each run clears its input, clicks it, types the printable key `x`, inserts a token, sets a replacement value, increments the counter, scrolls, and drags inside its pad. Text effects must match the exact expected value. The fixture does not handle Select All consistently under either engine, so the benchmark does not use that shortcut. Empty strings are valid `set_value` values for clearing controls. Element IDs are resolved again after reads. Drag coordinates are scaled from fixture window points to screenshot pixels, using PNG or JPEG dimensions. Unknown formats produce an explicit skipped-drag error. The endpoint changes per run so a stale drag label cannot pass as a new effect.
+## GUI-session relay
 
-Observed effects and API errors are separate fields. `verified: null` means a step has no effect assertion; the current sequence asserts every expected effect. The counter, scroll offset, text value, focus and drag label provide effect checks. This normal fixture does not prove behavior on a wheel-ignoring scroll area, a refused value write or a second window. Those remain separate acceptance gates.
-
-The Codex path uses the installed `cu.mjs` skill session with `CU_ENGINE=codex`. It requires the user's Codex computer-use installation. It does not inspect or copy the closed engine implementation.
-
-## Initial lane result
-
-Native OCU release 1.1.2 on the real fixture reproduced failed input focus, a subsequent typing error, and a drag call with no effect. Scroll and setValue worked in three samples. Development-runtime changes are blocked until the development bundle can be stably signed and granted permissions. See the lane's external report for raw artifact paths, exact measurements and signing diagnostics. No engine fix or parity improvement is claimed by these benchmark scripts.
-
-## Direct terminal probe
+The operator supplies `OCU_RELAY`. All GUI operations must run in the desktop login's audit session. Accessibility trust alone does not establish that context.
 
 ```sh
-swift build -c release --product OCUActionProbe
-.build/release/OCUActionProbe doctor
-node experiments/parity/act-fixture.mjs
-OCU_BIN=.build/release/OCUActionProbe \
-  node experiments/parity/act-bench.mjs ocu 3 > .build/ocu-direct-actions.json
-node experiments/parity/act-fixture.mjs close
+node "$OCU_RELAY" --cwd "$PWD" -- "$PWD/.build/release/OCUActionProbe" doctor --json
+node "$OCU_RELAY" --cwd "$PWD" -- node "$PWD/experiments/parity/act-fixture.mjs"
+node "$OCU_RELAY" --cwd "$PWD" \
+  --env "OCU_BIN=$PWD/.build/release/OCUActionProbe" --timeout 180000 \
+  -- node "$PWD/experiments/parity/act-bench.mjs" ocu 3
+node experiments/parity/act-bench.mjs codex 3
+node "$OCU_RELAY" --cwd "$PWD" -- node "$PWD/experiments/parity/act-fixture.mjs" close
 ```
 
-The probe runs the same `StdioMCPServer`, tool dispatcher and `ComputerUseService` without the app-agent proxy. Its main AppKit loop supports the existing cursor and capture paths. It does not enable Locked Use, replace session validation or alter macOS permissions. Label any resulting measurements as **direct terminal probe**, not signed-app measurements.
+Require `sessionState=unlocked` in the probe doctor. The probe runs the production MCP server and tool service directly, without the app-agent proxy or a session-guard override. Label these measurements as **direct tool through GUI relay**. Signed-app acceptance is a separate gate.
 
-`doctor` reports both permissions and session context. Accessibility trust alone is insufficient: the library requires an unlocked console session whose audit ID matches the calling process. In the measured pane, Accessibility and Screen Capture are true, but the process and console audit IDs differ. A second shell started by the actual Herdr host has the same mismatch. The probe therefore fails before app discovery or input. No direct action timings or engine improvements have been established in this context.
+## Action results and verification
 
-Run the probe from a terminal in the active desktop login, and require `sessionState=unlocked` before benchmarking. Signed development app acceptance remains a separate final gate.
+`OCU_ACTION_READ_BACK=default` leaves the native setting unset. The native default returns bounded state from at most twelve cached targets plus current focus/selection. Known value writes and printable keys return the verified target value. Scroll and drag include the cached properties that changed. Values in bounded feedback are limited to 200 characters. These paths do not walk the tree or capture a screenshot. Request `get_app_state` for new elements or changed layout.
 
-## Input verification
+Use `OCU_ACTION_READ_BACK=1` for the legacy full-tree/screenshot result or `0` for state-output-off diagnostics. Effect verification still runs with state output off. The JS adapter forces the flag off, so this benchmark uses native MCP directly. `OCU_BIN` accepts a native executable or the npm launcher. Visual cursor defaults are retained; global pointer fallbacks are disabled by the benchmark.
 
-Real `set_value` calls validate the captured app/window and read the actual value after the write, including when full action read-back is off. Scroll and drag require a change in cached accessibility values or window geometry; unreadable or unchanged state produces an explicit error. A successful visual-only drag can therefore return an unverified-effect error. Unsupported page-scroll actions fall back to a targeted wheel event, then undergo the same verification. Synthetic fixture paths also reject unverified effects.
+Real value writes verify exact UTF-16 text or the numeric value and check the captured app/window before and after writing. Scroll and drag require a change in cached AX values or window geometry. An unobserved effect returns an error. A successful visual-only drag can therefore return an unverified-effect error. Unsupported page-scroll actions fall back to targeted wheel input for the remaining page budget.
 
-`act-fixture.mjs ignore-wheel` starts a fixture that drops wheel input. `act-fixture.mjs reject-values` starts a field whose AX setter ignores writes. Close the own fixture before changing modes. Use `OCU_CHECK_MODE=ignore-wheel` or `reject-values` with `act-bench.mjs ocu 1` for those probes. `OCU_CHECK_MODE=standard` adds non-settable-value, invalid-scroll-target and zero-distance-drag checks after a normal sequence. Expected errors have `verified=true`; they are not successful action timings.
+Lowercase ASCII letters and digits in readable text controls use exact value verification instead of a fixed keyboard settle delay. Other keys keep the established delay. Keyboard and typing actions read live focus, so sequential typing works without intervening full snapshots. Cursor travel and pulse rendering use cancellable main-loop timers; input does not wait for animation completion. The existing path, spring and idle-pose calculations are retained.
 
-The native default action result reads at most twelve cached targets and live focus/selection state, without a tree walk or screenshot. It reports cached value changes relative to the last explicit snapshot. Call `get_app_state` for new elements or changed layout. Mandatory setValue/scroll/drag verification also runs with full read-back disabled. Explicit `OPEN_COMPUTER_USE_ACTION_READ_BACK=1` retains full snapshots and legacy settle pauses.
+## Hostile checks
 
-Cursor travel and click pulses now run on main-loop timers. Input delivery does not wait for animation completion. A new move cancels the old animation; turn-end/reset invalidates its timer and pending pulse. The motion path, spring and idle pose calculations are retained. `OCU_CHECK_MODE=cursor-reset` skips the post-click read before resetting, so it can test cancellation while motion is active. Cursor observation probes also verify arrival at the anchored idle point and cleanup to hidden on session close.
+Close the own fixture before changing its mode. The normal mode uses an unmodified native text field.
 
-Lowercase ASCII letters and digits in a readable focused text control use exact value verification instead of a fixed keyboard settle delay. Other keys keep the established delay. Keyboard and typing actions read current focus, so click/key/type sequences work without intervening full snapshots (`OCU_CHECK_MODE=chain`). Known value writes and printable-key results report the verified target value; scroll and drag results include the cached properties that changed. Existing private keyboard posting was measured as a diagnostic and was not retained because it did not improve latency.
+| Fixture mode | Benchmark setting | Required outcome |
+| --- | --- | --- |
+| `act-fixture.mjs ignore-wheel` | `OCU_CHECK_MODE=ignore-wheel` | Explicit unverified-scroll error |
+| `act-fixture.mjs reject-values` | `OCU_CHECK_MODE=reject-values` | Ignored AX setter returns verification error |
+| normal fixture | `OCU_CHECK_MODE=standard` | Read-only value, invalid scroll target and zero drag rejected |
+| normal fixture | `OCU_CHECK_MODE=chain` | Exact chained text with no intervening reads |
 
-For the full Swift suite in a desktop-session relay, run `node experiments/parity/swift-check.mjs build` and `node experiments/parity/swift-check.mjs test`. The helper accepts only those two commands and fixes its working directory to this checkout. Cursor-following tests wait for the rendered endpoint or idle state and continue to require one-pixel accuracy. They also assert that scheduling motion returns within half a second. The background-pane audit mismatch can cause the pre-existing query/session test to fail; the GUI-session result is recorded separately.
+`OCU_CHECK_MODE=cursor-reset` resets while motion is active. An observation-file probe verifies `moving -> hidden` while the process remains alive. A separate idle probe verifies arrival at the anchored resting point and hidden cleanup on session close. Expected error rows have `verified=true`; they are not successful action timings.
 
-An optimized development app can be packaged with `OPEN_COMPUTER_USE_APP_VARIANT=dev ./scripts/build-open-computer-use-app.sh release`. Use an isolated `OPEN_COMPUTER_USE_APP_OUTPUT_DIR` for parity work and keep Locked Use components disabled. This keeps `com.ifuryst.opencomputeruse.dev` and the `(Dev)` name; the override accepts only `dev`. Automatic Locked Use packaging remains limited to the release app identity. The lane checked unsigned packaging in an isolated build directory. A Developer ID signature and permissions must still be verified before signed-app acceptance.
+## Swift and parser checks
+
+Run `node experiments/parity/swift-check.mjs build` and `node experiments/parity/swift-check.mjs test` through the GUI relay. The helper accepts only those commands and fixes its working directory to this checkout. Cursor-following tests wait for rendered endpoints and retain one-pixel accuracy. Run the parser falsifiers with `node --test experiments/parity/act-value.test.mjs`.
+
+## Optimized development app
+
+`OPEN_COMPUTER_USE_APP_VARIANT=dev` keeps the dev identity with release optimization:
+
+```sh
+OPEN_COMPUTER_USE_APP_VARIANT=dev \
+OPEN_COMPUTER_USE_APP_OUTPUT_DIR="$PWD/.build/parity-dev" \
+OPEN_COMPUTER_USE_INCLUDE_LOCKED_USE=0 \
+./scripts/build-open-computer-use-app.sh release
+```
+
+The override accepts only `dev`. It keeps `com.ifuryst.opencomputeruse.dev` and the `(Dev)` name. Automatic Locked Use packaging remains limited to the release app identity. This lane checked unsigned packaging in an isolated build directory. Before app-agent acceptance, verify stable Developer ID signing, grant the two permissions and rerun the benchmark with that app's binary.
+
+## 2026-10-30 result
+
+Real fixture only. Final action medians from three runs per engine, runtime candidate `10bb3cd532ec`:
+
+| Action | Before OCU ms | Final OCU ms | Final Codex ms | Within 1.5x |
+| --- | ---: | ---: | ---: | --- |
+| click | 3838 (unverified effect) | 55 | 73 | yes |
+| pressKey | 2045 (unverified effect) | 30 | 7 | no |
+| typeText | 1 (error) | 22 | 23 | yes |
+| scroll | 580 | 120 | 1171 | yes |
+
+Click, typing and scroll meet the timing limit. Keypress remains 30 ms versus 7 ms for Codex. The fixed pause is removed for the verified printable-key path, but delivery/verification remains above the target. An existing private posting path did not improve the measured result and was not retained. Normal native drag remains unverified and returns an error; working drag is not claimed.
+
+The GUI Swift suite passes: 407 tests, 8 skipped, 0 failures. The background-pane query/session failure observed at the accepted base passes in the correct desktop session. The report retains both final series, raw state/effect checks, separate read timings, hostile cases, source/binary hashes and exact signing prerequisites. Calculator, TextEdit and the signed app-agent path were not measured.

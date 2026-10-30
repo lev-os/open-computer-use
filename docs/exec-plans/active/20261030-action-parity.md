@@ -1,52 +1,47 @@
-# Action parity on the local fixture
+# Action parity on the real fixture
 
 ## Goal
-Measure the same action sequence on Codex and the development OCU build. Reduce default action latency and reject unverified scroll, setValue and drag results. Record three final runs for each engine, with explicit limits where a target cannot be met.
+Reduce native action latency and reject unverified effects. Compare the optimized direct probe with Codex under the shared lock. Keep signed-app acceptance separate.
 
-## Scope
-Own action dispatch, input delivery, an action benchmark and the minimum packaging change for an optimized development bundle. Keep tree-reading changes with the read lane. Use only the checkout fixture or newly created Calculator/TextEdit windows. Make local commits on parity-act; do not publish.
+## Current vs Ideal
+The direct-tool run is complete with partial parity. Click, typing and scroll meet the 1.5x limit on the fixture. Printable-key delivery remains 30 ms versus 7 ms for Codex. Native drag returns an explicit error when its effect cannot be verified.
 
-## Background and standards
-- `docs/REPO_COLLAB_GUIDE.md`: small changes, synchronized documentation, runnable verification.
-- `docs/ARCHITECTURE.md`: app-agent permission identity and action read-back contracts.
-- `docs/design-docs/core-beliefs.md`: traceable evidence and simple abstractions.
-- `docs/HISTORY_GUIDE.md`: final sanitized history using the existing template.
-- `docs/QUALITY_SCORE.md`: fixture tests supplement actual input-delivery evidence.
-- Lane brief is the acceptance contract. Shared workshop-intake state is read-only for this lane.
+The ideal result meets every timing target and repeats those checks through a signed optimized development app. That app-agent gate remains pending JP's signing and permission steps.
 
-## Risks
-Permission refusal stops development-runtime work. Report the exact manual settings steps and continue only work supported by the installed release. Benchmarks use the shared lock. Synthetic fixture bridge results must be identified separately from real event delivery.
+| Action | Before OCU ms | Final OCU ms | Final Codex ms | Within 1.5x |
+| --- | ---: | ---: | ---: | --- |
+| click | 3838 (unverified effect) | 55 | 73 | yes |
+| pressKey | 2045 (unverified effect) | 30 | 7 | no |
+| typeText | 1 (error) | 22 | 23 | yes |
+| scroll | 580 | 120 | 1171 | yes |
 
-## Milestones
-1. Build baseline and fixture, check permissions, measure both engines.
-2. Change one action behavior at a time, rerun benchmark, commit each working step.
-3. Run three final samples per engine, Swift build/tests, inspect diff, update report and history.
+Before timings marked unverified or error do not represent a completed successful action. Final timing medians use three runs; raw distributions and read times are in the external lane report.
 
-## Verification
-Use `experiments/parity/act-bench.mjs`, `swift build`, `swift test`, and fixture-exported state as an independent action oracle. Measure in-session elapsed times and explicit reads separately. No third-party dependencies.
+## What top experts in macOS automation would do
+Start from actual AX calls, event delivery, the fixture's own state and raw post-action reads. A returned success status alone is insufficient evidence.
 
-## Progress
-- [x] Read brief, checkout rules and workstream state; verified clean parity-act at the accepted base.
-- [x] Baseline measurements: three sequences per engine on the real-input fixture. Initial synthetic-bridge and unscaled-coordinate samples are excluded.
-- [ ] Bounded action changes and before/after measurements: blocked by Developer ID signing and development permissions.
-- [x] Final build, syntax/documentation checks and history for benchmark delivery. Three final sequences per engine are recorded in the external lane report. Engine acceptance remains blocked.
+Pin optimized binaries and the common action script. Separate action time from explicit full-read time. Exercise ignored writes, ignored wheel input, invalid targets and cancellation. Use the fixture's exported values, strict text assertions, live cursor observations and the Swift suite as independent checks.
 
-## Decisions
-- 2026-10-30: Graph indexing failed because an unverified CBM generation is active. Use direct source inspection; do not restart or replace the shared graph service.
+## Scope and standards
+- Action service, verification, cursor scheduling, fixture controls, benchmark and minimal development packaging override.
+- `docs/REPO_COLLAB_GUIDE.md`: small local commits, synchronized docs and runnable checks. `docs/ARCHITECTURE.md`: app-agent and observation boundaries.
+- `docs/HISTORY_GUIDE.md`: one sanitized history. `docs/QUALITY_SCORE.md`: fixture evidence does not establish broad app compatibility.
+- No tree-reader edits, no main/read-worktree changes, no installed app replacement and no publication. Workshop-intake state is read-only under the brief; this lane's external report owns progress.
 
-## Current result and stop boundary
-The explicit identity build timed out during signing after 60 seconds. The development bundle still has an ad-hoc signature and no team identifier. Do not grant permissions until stable signing is verified. There is no signed development artifact to hand over yet.
+## Verification and completed milestones
+- [x] Baseline on both engines, optimized direct probe and GUI-session routing with guards intact.
+- [x] Empty values, verified text focus, UTF-16 selection replacement and live focus between actions.
+- [x] Verified values and scroll/drag effects; ignored-input and invalid-target falsifiers, including state-output-off checks.
+- [x] Bounded default state, explicit legacy full mode, nonblocking cursor lifecycle and remaining-page fallback.
+- [x] Matched frozen baseline and three final runs per engine. Both final series are retained with source and binary hashes.
+- [x] GUI Swift build and suite: 407 tests, 8 skipped, 0 failures. Parser falsifiers: 3 passed.
+- [x] Release-optimized development bundle identity checked without signing or installation.
+- [ ] JP-dependent signed app-agent acceptance.
 
-Installed-release baseline (three real-input fixture sequences): input click does not focus the field; subsequent typeText returns an AX error; drag returns without an observed effect. Counter clicks, scroll and setValue work in this fixture. No action engine source was changed because the development runtime cannot yet be tested. Full Swift build passes; baseline Swift tests have one failure in `TextSelectionOperationTests.testQueryIndexesValidateSessionBeforeLookingUpTheApp`.
+## Stop decision and remaining work
+The brief permits stopping at the best measured result when a target cannot be met. This run stops with the key timing target unmet. The public path and an experimental use of the existing private posting entry point were measured. The experiment did not improve the result and was not retained. Further key-delivery work needs a new bounded investigation that preserves the effect checks.
 
-The lane report holds exact signing output, separate action/read timings, read-back-on/off comparison, raw artifact references and remaining gates. Shared workstream state is unchanged because this lane prohibits edits to the owning Leviathan checkout.
+JP must first produce a stable signed development app and grant its permissions. Then rerun the same three-run benchmark through the app-agent path, including timer cleanup and per-request settings. The direct-tool result does not establish that acceptance.
 
-## Direct probe continuation
-The operator authorized a terminal-owned Swift probe after `AXIsProcessTrusted()` returned true. Reuse `OpenComputerUseKit` through `StdioMCPServer`, without the app-agent proxy. Measure optimized probe baseline, then change one action behavior at a time and retain before/after measurements. Signed development app acceptance stays deferred; signing no longer blocks library work.
-
-Keep native input confined to the checkout fixture. Existing full-tree rendering remains owned by the read lane. Any bounded action observation must read cached targets only, without changing tree construction.
-
-### Direct probe result
-The optimized terminal probe compiles and both permission checks pass. Execution is blocked by a distinct audit-session mismatch. The library classifies this session as unavailable; the actual Herdr pane host has the same mismatch. Unprivileged session joining is denied. Session validation and Locked Use behavior remain unchanged. Temporary PID-discovery plumbing was removed because it could not solve this prerequisite and would add unverified production changes.
-
-The next executable frontier is a terminal in the active desktop audit session: require the probe doctor's session state to be unlocked, then collect its baseline and continue the bounded action changes. No signing work is required for that direct-tool route. No direct-tool latency table is claimed before execution is admitted.
+## Evidence
+The external lane report has the raw files, exact signing command and paths, before/after tables and local commits. Runtime candidate: `10bb3cd532ec5c1a4c782a7c9e56dd359502b205`. The initial graph-index attempt failed because an unverified shared generation was active, so source discovery used direct inspection.

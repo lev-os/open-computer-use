@@ -1,41 +1,45 @@
-## 2026-10-30 | Task: Measure action parity and record the development runtime gate
+## 2026-10-30 17:00 | Task: Improve and verify computer-use actions
 
 ### 🤖 Execution Context
 * **Agent ID**: `/root`, action lane
 * **Base Model**: GPT-6 (Codex)
-* **Runtime**: Codex on macOS
+* **Runtime**: Codex on macOS; optimized Swift probe through a desktop-session relay
 
 ### 📥 User Query
-> Run the action parity brief to its completion conditions. Measure both engines, make bounded verified changes, commit locally, and update the lane report after each step. Keep the development identity separate from release apps.
+> Run the action parity brief to its completion conditions. Measure Codex and OCU, make verified bounded changes, commit locally and update the external report after each step. Use the authorized desktop relay for GUI work. Keep signed-app acceptance separate.
 
 ### 🛠 Changes Overview
-**Scope:** Action benchmark and fixture preparation; no action engine source changes.
+**Scope:** Native action behavior, bounded observation, cursor scheduling, fixture falsifiers and benchmark tooling.
 
 **Key Actions:**
-- Added one shared action sequence for Codex through the installed computer-use skill session and OCU through native MCP. Record in-session action time, explicit read time, tool errors and observed effects separately.
-- Added fixture preparation and cleanup. A distinct app name bypasses the synthetic fixture command bridge. Verify the exact checkout executable and exported PID. Scale drag coordinates from window points to screenshot pixels.
-- Collected three sequences per engine on the real-input fixture, plus a separate three-sequence OCU read-back-off diagnostic. Preserve raw samples and signing output in the external lane report.
-- Stopped development-runtime work at the brief's signing and permission gate. An explicit Developer ID build timed out during signing; stable signing was not established. Permission steps are conditional on a verified signature.
+- Added a shared action script, exact text parser, fixture preparation, direct MCP probe, GUI Swift-check helper and shared-lock discipline. A distinct fixture name bypasses the synthetic command bridge; the benchmark validates the exact executable and PID.
+- Added empty-value support, verified editable focus, UTF-16 selection replacement, live focus and value/window validation. Ignored writes and unobserved scroll/drag effects return errors. Page fallback preserves the remaining budget.
+- Made action read-back bounded by default, retaining explicit full/off modes. Moved cursor motion and pulses to cancellable main-loop timers while preserving the motion model. Verified idle anchoring, moving-reset cancellation and close cleanup.
+- Added hostile fixture modes, strengthened cursor tests for asynchronous endpoints, checked optimized dev bundle identity and retained two final series with raw samples and hashes. All changes remain local.
 
 ### 🧠 Design Intent (Why)
-A successful API return is not evidence that input reached the control. The fixture's values and exported state distinguish effects from silent no-ops. Native MCP preserves the read-back setting, which the JS adapter otherwise forces off. No engine patch is claimed without a testable development runtime.
+Full snapshots and blocking cursor animation dominated action latency. Cached observations keep the default response cheap while reporting actual state. A successful AX return does not prove the app accepted the action, so value and observable-effect checks run even when state output is disabled.
 
-The installed release failed to focus the input, subsequent typing returned an AX error, and drag produced no observed change. Normal scroll and setValue succeeded in the fixture. These samples do not establish wheel-ignoring scroll, refused-write, or wrong-window guarantees.
+Final review corrected partial page fallback and a whitespace-trimming verifier gap. The first series remains available; all 24 retained text observations also pass the stricter parser. No performance-based sample selection is claimed.
 
 ### 📁 Files Modified
-- `experiments/parity/act-bench.mjs`
-- `experiments/parity/act-fixture.mjs`
-- `experiments/parity/README.md`
-- `docs/exec-plans/active/20261030-action-parity.md`
+- `packages/OpenComputerUseKit/Sources/OpenComputerUseKit/`: action service, dispatcher, input timing, text replacement, verification and cursor overlay.
+- `packages/OpenComputerUseKit/Tests/OpenComputerUseKitTests/`: value, selection, page-budget and asynchronous cursor checks.
+- `apps/OpenComputerUseFixture/`, `experiments/parity/` and `Package.swift`: real fixture, hostile modes and reproducible probes.
+- `scripts/build-open-computer-use-app.sh`, `docs/ARCHITECTURE.md` and the existing action parity plan.
 
 ### Verification and limits
-`swift build` passes. The unmodified accepted Swift base has one failing test: `TextSelectionOperationTests.testQueryIndexesValidateSessionBeforeLookingUpTheApp` at line 65. The suite executes 399 tests, skips 10, and reports one failure. Node syntax and repository documentation checks pass.
+The GUI Swift build passes. The suite executes 407 tests with 8 skipped and no failures; 3 parser tests pass. `TextSelectionOperationTests.testQueryIndexesValidateSessionBeforeLookingUpTheApp` failed in the background pane at the accepted base and passes in the proper desktop audit session. Session guards are unchanged.
 
-The action benchmark and preparation scripts were exercised against the checkout fixture. The lane remains blocked until stable development signing and permissions permit an optimized development build, bounded engine fixes, and post-fix acceptance. No runtime speedup, publication, or complete parity is claimed.
+Final action medians, three runs per engine:
 
-### Direct probe continuation
-The operator authorized a plain Swift executable after an Accessibility trust check returned true. Added the optimized `OCUActionProbe` target, which reuses the production MCP server and tool service directly, with no app-agent proxy. Its doctor reports permissions and audit-session context. No production input, tree, permission or session-guard code is changed.
+| Action | Before OCU ms | Final OCU ms | Final Codex ms | Within 1.5x |
+| --- | ---: | ---: | ---: | --- |
+| click | 3838 (unverified effect) | 55 | 73 | yes |
+| pressKey | 2045 (unverified effect) | 30 | 7 | no |
+| typeText | 1 (error) | 22 | 23 | yes |
+| scroll | 580 | 120 | 1171 | yes |
 
-Both Accessibility and Screen Capture are available to the probe, but its audit session differs from the active console session. The actual Herdr host shell has the same mismatch. The production session guard therefore rejects execution. The probe checks that prerequisite before discovery or input; it has no guard override. Temporary discovery experiments were removed. Direct action timing and engine fixes remain unverified; signed development app acceptance stays deferred.
+The key timing target remains unmet. Normal native drag has no verified effect and returns an error. Ignored wheel input, ignored AX writes, read-only values, invalid scroll targets and zero drag are rejected. Sequential typing works without intervening reads; explicit full mode and state-output-off checks pass.
 
-Direct-probe files: `Package.swift`, `experiments/parity/Sources/OCUActionProbe/main.swift`, `experiments/parity/README.md`, `docs/ARCHITECTURE.md`, and the existing action parity plan. Optimized and debug builds pass. The same single baseline test failure remains; direct session rejection is verified with exit code 1 and no input.
+The optimized development packaging check uses the dev identity and is unsigned. Signing initially timed out; signed app-agent behavior and broader app compatibility remain unverified. These measurements cover the optimized direct tool on the fixture. Signed app-agent acceptance remains deferred.
