@@ -1,0 +1,29 @@
+# Computer-use parity experiments
+
+`bench.mjs` measures full reads. `act-bench.mjs` measures the same action sequence inside each engine session. Both use the shared directory lock. Run one benchmark at a time; do not remove a live owner's lock.
+
+## Action benchmark
+
+```sh
+node experiments/parity/act-fixture.mjs
+node experiments/parity/act-bench.mjs codex 3 > .build/codex-actions.json
+OCU_BIN='dist/Open Computer Use (Dev).app/Contents/MacOS/OpenComputerUse' \
+  node experiments/parity/act-bench.mjs ocu 3 > .build/ocu-actions.json
+node experiments/parity/act-fixture.mjs close
+```
+
+The development app must have a stable Developer ID signature and both Accessibility and Screen Recording permissions. Do not grant permissions to an unfinished or ad-hoc build. Use `OCU_BIN=ocu` to measure the installed release without replacing it. The OCU benchmark calls the native MCP surface directly: the JS adapter forces action read-back off. The native executable path and the npm launcher both accept `mcp`.
+
+`OCU_ACTION_READ_BACK=1` is the benchmark default. Set it to `0` for a separate diagnostic run. Visual cursor behavior stays at the engine default. Each row records the action call, a separate full read, errors, state text and the observed effect. An error response's latency does not count as a successful fast action. Explicit reads use each engine's standard full-state API; native OCU also captures its default screenshot. These costs are reported separately, rather than treated as identical read work.
+
+The preparation script packages the checkout's fixture under `.build/ActionParityFixture.app`. Its distinct display and executable names bypass OCU's name-based synthetic fixture command bridge. The benchmark verifies the exported PID belongs to that exact checkout executable before acting. It captures the fixture's own exported state before and after the sequence. A prior synthetic run is not evidence of real mouse or keyboard delivery.
+
+Actions target only this fixture. Each run clicks its input, selects all, types a token, sets a replacement value, increments the counter, scrolls, and drags inside its pad. Element IDs are resolved again after reads. Drag coordinates are scaled from fixture window points to screenshot pixels, using PNG or JPEG dimensions. Unknown formats produce an explicit skipped-drag error. The endpoint changes per run so a stale drag label cannot pass as a new effect.
+
+Observed effects and API errors are separate fields. `verified: null` means the benchmark has no effect assertion for that step (currently the select-all key). The counter, scroll offset, text value, focus and drag label provide effect checks. This normal fixture does not prove behavior on a wheel-ignoring scroll area, a refused value write or a second window. Those remain separate acceptance gates.
+
+The Codex path uses the installed `cu.mjs` skill session with `CU_ENGINE=codex`. It requires the user's Codex computer-use installation. It does not inspect or copy the closed engine implementation.
+
+## Initial lane result
+
+Native OCU release 1.1.2 on the real fixture reproduced failed input focus, a subsequent typing error, and a drag call with no effect. Scroll and setValue worked in three samples. Development-runtime changes are blocked until the development bundle can be stably signed and granted permissions. See the lane's external report for raw artifact paths, exact measurements and signing diagnostics. No engine fix or parity improvement is claimed by these benchmark scripts.
