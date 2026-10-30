@@ -229,7 +229,9 @@ enum InputSimulation {
         return chunks
     }
 
-    static func pressKey(_ specification: String, pid: pid_t) throws {
+    static func pressKey(_ specification: String, pid: pid_t, settle: TimeInterval? = nil) throws {
+        let started = TimingLog.now()
+        defer { TimingLog.log("press_key.post", since: started) }
         try requireUsableComputerUseSession()
         let parsed = try KeyPressParser.parse(specification)
         var activeFlags: CGEventFlags = []
@@ -264,9 +266,8 @@ enum InputSimulation {
             activeFlags.remove(modifier.flag)
         }
 
-        if InputTiming.pressKeySettle > 0 {
-            Thread.sleep(forTimeInterval: InputTiming.pressKeySettle)
-        }
+        let delay = settle ?? InputTiming.pressKeySettle
+        if delay > 0 { Thread.sleep(forTimeInterval: delay) }
     }
 
     private static func postMouseEvent(type: CGEventType, source: CGEventSource?, point: CGPoint, button: CGMouseButton, clickState: Int, delta: CGSize? = nil, eventNumber: Int64? = nil) throws {

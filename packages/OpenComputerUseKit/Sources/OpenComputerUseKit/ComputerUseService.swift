@@ -913,10 +913,11 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("element \(elementIndex) has no scrollable frame")
         }
 
-        try requireObservedActionChange("scroll", before: before,
+        let after = try requireObservedActionChange("scroll", before: before,
             validate: { try requireActionTarget(scrollElement, in: snapshot) },
             read: { actionObservedValues(snapshot, scrollOnly: true) })
-        return try actionResult(for: query)
+        let result = try actionResult(for: query)
+        return actionReadBack ? appendingObservedActionChange(to: result, name: "scroll", before: before, after: after) : result
     }
 
     public func drag(app query: String, fromX: Double, fromY: Double, toX: Double, toY: Double) throws -> ToolCallResult {
@@ -950,11 +951,12 @@ public final class ComputerUseService {
             targetDescription: "from=(\(Int(fromX)), \(Int(fromY))) to=(\(Int(toX)), \(Int(toY)))",
             snapshot: snapshot
         )
-        try requireObservedActionChange("drag", before: before,
+        let after = try requireObservedActionChange("drag", before: before,
             validate: { try requireActionTarget(window, in: snapshot) },
             read: { actionObservedValues(snapshot) })
+        let result = try actionResult(for: query)
         return appendingDragDeliveryNote(
-            to: try actionResult(for: query),
+            to: actionReadBack ? appendingObservedActionChange(to: result, name: "drag", before: before, after: after) : result,
             path: path
         )
     }
@@ -988,6 +990,8 @@ public final class ComputerUseService {
     }
 
     public func pressKey(app query: String, key: String, keyMethod: KeyMethod = .auto) throws -> ToolCallResult {
+        let started = TimingLog.now()
+        defer { TimingLog.log("press_key.total", since: started) }
         let snapshot = try currentSnapshot(for: query)
         if snapshot.mode == .fixture {
             try requireAutoKeyMethodForFixture(keyMethod)
@@ -1002,6 +1006,22 @@ public final class ComputerUseService {
             return try actionResult(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod))
         }
 
+        if key.utf8.count == 1, let scalar = key.utf8.first,
+           (97...122).contains(scalar) || (48...57).contains(scalar),
+           let element = try actionFocusedElement(snapshot),
+           let original = stringValue(of: element, attribute: kAXValueAttribute),
+           let expected = actionTextReplacement(value: original,
+                range: AccessibilityTextSelection.readRange(of: element), text: key) {
+            TimingLog.log("press_key.ready", since: started)
+            try applyVerifiedActionValue(expected,
+                validate: { try requireFocusedActionTarget(element, in: snapshot) },
+                write: { try InputSimulation.pressKey(key, pid: snapshot.app.pid, settle: 0) },
+                read: { stringValue(of: element, attribute: kAXValueAttribute) })
+            if actionReadBack && !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+                return verifiedValueActionResult(snapshot, element: element, value: expected)
+            }
+            return try actionResult(for: query)
+        }
         try InputSimulation.pressKey(key, pid: snapshot.app.pid)
         return try actionResult(for: query)
     }
@@ -1082,6 +1102,9 @@ public final class ComputerUseService {
         }
 
         settleVisualCursor(at: cursorTarget)
+        if actionReadBack && !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+            return verifiedValueActionResult(snapshot, element: element, value: value)
+        }
         return try actionResult(for: query)
     }
 
@@ -1884,7 +1907,7 @@ public final class ComputerUseService {
     }
 
     private func typeTextBySettingFocusedValueIfAvailable(_ text: String, in snapshot: AppSnapshot) throws -> Bool {
-        guard let element = snapshot.focusedElement else {
+        guard let element = try actionFocusedElement(snapshot) else {
             return false
         }
 
@@ -1897,20 +1920,19 @@ public final class ComputerUseService {
                 range: AccessibilityTextSelection.readRange(of: element), text: text) else {
             return false // Let the app's keyboard path preserve its insertion/selection semantics.
         }
-        try requireUsableComputerUseSession()
-        let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, replacement as CFString)
-        switch result {
-        case .success:
-            return true
-        case .failure, .attributeUnsupported, .actionUnsupported, .cannotComplete, .noValue, .invalidUIElement, .illegalArgument:
-            return false
-        default:
-            throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
-        }
+        try applyVerifiedActionValue(replacement,
+            validate: { try requireFocusedActionTarget(element, in: snapshot) },
+            write: {
+                let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, replacement as CFString)
+                guard result == .success else {
+                    throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
+                }
+            }, read: { stringValue(of: element, attribute: kAXValueAttribute) })
+        return true
     }
 
     private func canTypeTextUsingKeyboardFallback(in snapshot: AppSnapshot) throws -> Bool {
-        guard let element = snapshot.focusedElement else {
+        guard let element = try actionFocusedElement(snapshot) else {
             return false
         }
 

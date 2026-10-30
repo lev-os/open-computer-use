@@ -91,6 +91,7 @@ try {
       catch (e) { readError = String(e.message || e); }
       var verified = null;
       if (!error && !readError && !skipRead) {
+        if (name === 'chainText') verified = inputValue(state) === 'xchain!';
         if (name === 'clearValue') verified = inputValue(state) === '';
         if (name === 'click') verified = /focused UI element[^\n]*fixture-input/.test(state);
         if (name === 'pressKey') verified = inputValue(state) === 'x';
@@ -108,6 +109,17 @@ try {
       rows.push({ run, action: name, action_ms: actionMs, read_ms: Date.now() - t, verified, screenshot_width: width || null,
         error, read_error: readError, result: typeof returned === 'string' ? returned.slice(0, 200) : typeof returned,
         state });
+    }
+    if (checkMode === 'chain') {
+      var input = find('fixture-input');
+      await step(0, 'chainText', async () => {
+        await a.setValue(input, '');
+        await a.click(input);
+        await a.pressKey('x');
+        await a.typeText('chain');
+        await a.typeText('!');
+      });
+      return rows;
     }
     if (checkMode === 'cursor-reset') {
       await step(0, 'click', () => a.click(find('fixture-input')), true);
@@ -147,7 +159,7 @@ try {
   class NativeSession {
     constructor() {
       this.id = 0; this.pending = new Map();
-      const nativeEnv = { ...process.env };
+      const nativeEnv = { ...process.env, OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS: '0' };
       if (!process.env.OCU_ACTION_READ_BACK || process.env.OCU_ACTION_READ_BACK === 'default') delete nativeEnv.OPEN_COMPUTER_USE_ACTION_READ_BACK;
       else nativeEnv.OPEN_COMPUTER_USE_ACTION_READ_BACK = process.env.OCU_ACTION_READ_BACK;
       this.child = spawn(process.env.OCU_BIN || 'ocu', ['mcp'], { stdio: ['pipe', 'pipe', 'pipe'], env: nativeEnv });
@@ -237,7 +249,8 @@ try {
   console.log(JSON.stringify({ engine, app, runs, ocu_bin: engine === 'ocu' ? process.env.OCU_BIN || 'ocu' : null,
     action_read_back: engine === 'ocu' ? process.env.OCU_ACTION_READ_BACK || 'native default' : 'engine default',
     visual_cursor: process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR || 'engine default',
-    before_fixture: fixture, after_fixture: finalState, cursor_observation: cursorObservation, summary, rows }));
+    global_pointer_fallbacks: engine === 'ocu' ? 'disabled by benchmark' : 'engine default',
+    before_fixture: fixture, after_fixture: finalState, cursor_observation: cursorObservation, native_timing: process.env.OPEN_COMPUTER_USE_DEBUG_TIMING ? native?.stderr : undefined, summary, rows }));
 } finally {
   await native?.close();
   fs.rmSync(lock, { recursive: true });

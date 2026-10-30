@@ -30,6 +30,7 @@ final class ActionVerificationTests: XCTestCase {
         for after in [["offset": "0"], [:]] {
             XCTAssertThrowsError(try requireObservedActionChange("scroll", before: ["offset": "0"], timeout: 0, validate: {}, read: { after }))
         }
-        try requireObservedActionChange("scroll", before: ["offset": "0"], timeout: 0, validate: {}, read: { ["offset": "1"] })
+        let changed = try requireObservedActionChange("scroll", before: ["offset": "0"], timeout: 0, validate: {}, read: { ["offset": "1"] })
+        XCTAssertEqual(changed["offset"], "1")
     }
 }
