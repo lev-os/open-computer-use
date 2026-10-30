@@ -80,17 +80,17 @@ try {
       var line = text.split('\n').find(l => l.includes('fixture-input'));
       return line ? (line.match(/Value: (.*?)(?:,? ID:| Frame:|$)/)?.[1]?.replace(/,$/, '').trim() || '') : undefined;
     }
-    async function step(run, name, action) {
+    async function step(run, name, action, skipRead = false) {
       var previousState = state;
       var t = Date.now(), error = null, returned;
       try { returned = await action(); } catch (e) { error = String(e.message || e); }
       var actionMs = Date.now() - t;
       t = Date.now();
       var readError = null;
-      try { state = String(await a.getAXState({ emit: false, disableDiffing: true })); }
+      try { if (!skipRead) state = String(await a.getAXState({ emit: false, disableDiffing: true })); }
       catch (e) { readError = String(e.message || e); }
       var verified = null;
-      if (!error && !readError) {
+      if (!error && !readError && !skipRead) {
         if (name === 'clearValue') verified = inputValue(state) === '';
         if (name === 'click') verified = /focused UI element[^\n]*fixture-input/.test(state);
         if (name === 'pressKey') verified = inputValue(state) === 'x';
@@ -108,6 +108,12 @@ try {
       rows.push({ run, action: name, action_ms: actionMs, read_ms: Date.now() - t, verified, screenshot_width: width || null,
         error, read_error: readError, result: typeof returned === 'string' ? returned.slice(0, 200) : typeof returned,
         state });
+    }
+    if (checkMode === 'cursor-reset') {
+      await step(0, 'click', () => a.click(find('fixture-input')), true);
+      await step(0, 'resetCursor', () => a.endTurn(), true);
+      await new Promise(resolve => setTimeout(resolve, 250));
+      return rows;
     }
     if (checkMode === 'reject-values') {
       await step(0, 'rejectIgnoredValue', () => a.setValue(find('fixture-input'), 'must-not-apply'));
@@ -174,6 +180,13 @@ try {
     }
     facade() {
       return {
+        endTurn: async () => {
+          const file = process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR_OBSERVATION_FILE;
+          const before = file && fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+          this.child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/turn-ended' }) + '\n');
+          await this.rpc('ping', {});
+          return before;
+        },
         getAXState: () => this.call('get_app_state'),
         getScreenshot: () => { if (process.env.ACT_BENCH_CAPTURE && this.image) fs.writeFileSync('.build/act-fixture-ocu.image', Buffer.from(this.image.data, 'base64')); if (!this.image) throw new Error('OCU returned no screenshot'); return Uint8Array.from(Buffer.from(this.image.data, 'base64')); },
         click: i => this.call('click', { element_index: String(i) }),
@@ -184,7 +197,14 @@ try {
         drag: (from, to) => this.call('drag', { from_x: from[0], from_y: from[1], to_x: to[0], to_y: to[1] }),
       };
     }
-    close() { this.child.stdin.end(); this.child.kill(); }
+    async close() {
+      if (this.child.exitCode !== null) return;
+      await new Promise(resolve => {
+        const timer = setTimeout(() => { this.child.kill(); resolve(); }, 1000);
+        this.child.once('exit', () => { clearTimeout(timer); resolve(); });
+        this.child.stdin.end();
+      });
+    }
   }
 
   let rows;
@@ -203,6 +223,10 @@ try {
     await native.rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'act-bench', version: '1' } });
     rows = await sequence(native.facade(), runs, drag, fixture.windowBounds.width, process.env.OCU_CHECK_MODE || '');
   }
+  const idle = Math.min(5000, Math.max(0, Number(process.env.ACT_BENCH_IDLE_MS || 0)));
+  if (idle) await new Promise(resolve => setTimeout(resolve, idle));
+  const observationPath = process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR_OBSERVATION_FILE;
+  const cursorObservation = observationPath && fs.existsSync(observationPath) ? JSON.parse(fs.readFileSync(observationPath, 'utf8')) : null;
   const finalState = JSON.parse(fs.readFileSync(fixtureState, 'utf8'));
   if (finalState.processIdentifier !== fixture.processIdentifier) throw new Error('Fixture oracle changed process during the benchmark');
   const summary = Object.fromEntries([...new Set(rows.map(r => r.action))].map(action => {
@@ -213,8 +237,8 @@ try {
   console.log(JSON.stringify({ engine, app, runs, ocu_bin: engine === 'ocu' ? process.env.OCU_BIN || 'ocu' : null,
     action_read_back: engine === 'ocu' ? process.env.OCU_ACTION_READ_BACK || 'native default' : 'engine default',
     visual_cursor: process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR || 'engine default',
-    before_fixture: fixture, after_fixture: finalState, summary, rows }));
+    before_fixture: fixture, after_fixture: finalState, cursor_observation: cursorObservation, summary, rows }));
 } finally {
-  native?.close();
+  await native?.close();
   fs.rmSync(lock, { recursive: true });
 }
