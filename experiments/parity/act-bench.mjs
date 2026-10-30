@@ -76,6 +76,10 @@ try {
       if (!match) throw new Error('Fixture element missing: ' + id);
       return Number(match[1]);
     }
+    function inputValue(text) {
+      var line = text.split('\n').find(l => l.includes('ID: fixture-input'));
+      return line ? (line.match(/Value: (.*?)(?:,? ID:| Frame:|$)/)?.[1]?.replace(/,$/, '').trim() || '') : undefined;
+    }
     async function step(run, name, action) {
       var previousState = state;
       var t = Date.now(), error = null, returned;
@@ -87,9 +91,11 @@ try {
       catch (e) { readError = String(e.message || e); }
       var verified = null;
       if (!error && !readError) {
+        if (name === 'clearValue') verified = inputValue(state) === '';
         if (name === 'click') verified = /focused UI element[^\n]*fixture-input/.test(state);
-        if (name === 'typeText') verified = state.includes('parity-' + run);
-        if (name === 'setValue') verified = state.includes('verified-' + run);
+        if (name === 'pressKey') verified = inputValue(state) === 'x';
+        if (name === 'typeText') verified = inputValue(state) === 'xparity-' + run;
+        if (name === 'setValue') verified = inputValue(state) === 'verified-' + run;
         if (name === 'clickCounter') verified = Number(state.match(/Counter: (\d+)/)?.[1]) === Number(previousState.match(/Counter: (\d+)/)?.[1]) + 1;
         if (name === 'scroll') {
           var beforeOffset = previousState.match(/Scroll offset: ([-\d]+)/)?.[1];
@@ -103,8 +109,9 @@ try {
         state });
     }
     for (var i = 0; i < count; i++) {
+      await step(i, 'clearValue', () => a.setValue(find('fixture-input'), ''));
       await step(i, 'click', () => a.click(find('fixture-input')));
-      await step(i, 'pressKey', () => a.pressKey('super+a'));
+      await step(i, 'pressKey', () => a.pressKey('x'));
       await step(i, 'typeText', () => a.typeText('parity-' + i));
       await step(i, 'setValue', () => a.setValue(find('fixture-input'), 'verified-' + i));
       await step(i, 'clickCounter', () => a.click(find('fixture-increment')));
