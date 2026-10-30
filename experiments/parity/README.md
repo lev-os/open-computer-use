@@ -29,3 +29,7 @@ When the terminal audit session differs from the console, run `OCU_READ_RELAY=1 
 Each app binding has its own baseline. Window/header or observation-option changes, native errors, duplicate IDs and screenshot reads reset it. Request a new full baseline after a missed packet. Diffing reduces returned text; the native tree is still read in full, so it does not remove AX traversal time.
 
 `OCU_PARITY_OUTPUT=<private-directory> node experiments/parity/diff-bench.mjs` captures three direct relay snapshots per allowed app and verifies exact reconstruction through the same codec. It performs no actions. Live replay and controlled app-API tests are separate from signed-app acceptance.
+
+## Optimized development app
+
+`OPEN_COMPUTER_USE_DEV_APP=1 ./scripts/build-open-computer-use-app.sh release` keeps `com.ifuryst.opencomputeruse.dev`, the Dev name and variant while using release optimization. An explicit dev build preserves neighboring release/legacy bundles. Use an isolated output directory for lane work. A build with `OPEN_COMPUTER_USE_CODESIGN_MODE=none` is an unsigned packaging check only; do not grant it permissions or count it as signed-app acceptance.

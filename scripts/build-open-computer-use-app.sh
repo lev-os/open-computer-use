@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 configuration="debug"
+dev_app="${OPEN_COMPUTER_USE_DEV_APP:-0}"
 arch_mode="native"
 codesign_mode="${OPEN_COMPUTER_USE_CODESIGN_MODE:-auto}"
 codesign_identity="${OPEN_COMPUTER_USE_CODESIGN_IDENTITY:-}"
@@ -18,6 +19,7 @@ Examples:
   ./scripts/build-open-computer-use-app.sh --configuration release --arch universal
 
 Environment:
+  OPEN_COMPUTER_USE_DEV_APP=1   # Keep dev identity even with release optimization
   OPEN_COMPUTER_USE_APP_OUTPUT_DIR=/path/to/isolated/output
   OPEN_COMPUTER_USE_CODESIGN_MODE=auto|identity|adhoc|none
   OPEN_COMPUTER_USE_CODESIGN_IDENTITY="Developer ID Application: Example, Inc. (TEAMID)"
@@ -61,6 +63,11 @@ done
 
 if [[ "${configuration}" != "debug" && "${configuration}" != "release" ]]; then
   echo "Unsupported configuration: ${configuration}" >&2
+  exit 1
+fi
+
+if [[ "${dev_app}" != "0" && "${dev_app}" != "1" ]]; then
+  echo "OPEN_COMPUTER_USE_DEV_APP must be 0 or 1" >&2
   exit 1
 fi
 
@@ -259,7 +266,7 @@ bundle_identifier="com.ifuryst.opencomputeruse"
 app_variant="release"
 app_bundle_name="${release_app_bundle_name}"
 
-if [[ "${configuration}" != "release" ]]; then
+if [[ "${configuration}" != "release" || "${dev_app}" == "1" ]]; then
   bundle_display_name="Open Computer Use (Dev)"
   bundle_identifier="com.ifuryst.opencomputeruse.dev"
   app_variant="dev"
@@ -275,11 +282,15 @@ contents_dir="${app_root}/Contents"
 macos_dir="${contents_dir}/MacOS"
 resources_dir="${contents_dir}/Resources"
 
-rm -rf "${app_root}" "${legacy_app_root}"
-if [[ "${app_variant}" == "release" ]]; then
-  rm -rf "${development_app_root}"
-else
-  rm -rf "${release_app_root}"
+rm -rf "${app_root}"
+# An explicit dev build must not remove a neighboring release or legacy bundle.
+if [[ "${dev_app}" != "1" ]]; then
+  rm -rf "${legacy_app_root}"
+  if [[ "${app_variant}" == "release" ]]; then
+    rm -rf "${development_app_root}"
+  else
+    rm -rf "${release_app_root}"
+  fi
 fi
 mkdir -p "${macos_dir}" "${resources_dir}"
 
