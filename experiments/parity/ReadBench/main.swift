@@ -37,15 +37,19 @@ do {
     let reads = args.count > 3 ? Int(args[3]) ?? 0 : 5
     guard (1...100).contains(reads) else { throw NSError(domain: "OCUReadBench", code: 2) }
     var ms: [Double] = [], chars: [Int] = [], breakdown: [Read] = []
-    for _ in 0..<reads {
+    var previous: AccessibilityReadBenchmark.Result?
+    for read in 0..<reads {
         let start = ProcessInfo.processInfo.systemUptime
-        let result = try AccessibilityReadBenchmark.read(pid: pid, name: args[1], bundleIdentifier: args[2])
+        let result = try withExtendedLifetime(previous) {
+            try AccessibilityReadBenchmark.read(pid: pid, name: args[1], bundleIdentifier: args[2])
+        }
+        previous = result
         ms.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
         chars.append(result.text.utf16.count)
         breakdown.append(Read(tree_ms: result.treeMilliseconds, text_ms: result.textMilliseconds,
                               ax_ms: result.axMilliseconds, ax_calls: result.axCalls, line_ms: result.lineMilliseconds,
                               element_count: result.elementCount, indexes_valid: result.indexesValid))
-        if args.count > 4 { try result.text.write(toFile: args[4], atomically: true, encoding: .utf8) }
+        if read == reads - 1 && args.count > 4 { try result.text.write(toFile: args[4], atomically: true, encoding: .utf8) }
     }
     let report = Report(app: args[1], ms: ms, chars: chars, median_ms: ms.sorted()[ms.count / 2], breakdown: breakdown)
     print(String(decoding: try JSONEncoder().encode(report), as: UTF8.self))

@@ -832,16 +832,15 @@ private struct RenderContext {
     let focusedElement: AXUIElement?
     let textLimit: SnapshotTextLimit
     let treeLimits: AccessibilityTreeLimits
-    var flattenInertContainers = true
     var compactText = true
 }
 
 // Runs the real renderer against a scoped, injected AX provider. The returned
 // records let semantic fixtures verify the actual numeric action lookup targets.
 func renderAXSemanticFixture(root: AXUIElement, focused: AXUIElement? = nil,
-                             flattenInertContainers: Bool = false, compactText: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
+                             compactText: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
     var renderer = TreeRenderer(context: RenderContext(windowBounds: .zero, focusedElement: focused,
-        textLimit: .max, treeLimits: .defaults, flattenInertContainers: flattenInertContainers, compactText: compactText))
+        textLimit: .max, treeLimits: .defaults, compactText: compactText))
     renderer.render(root)
     return (renderer.lines, renderer.records)
 }
@@ -955,12 +954,6 @@ private struct TreeRenderer {
             suppressChildren: hidesChildren
         )
 
-        // A nameless, stateless web hierarchy group adds no agent information.
-        // Keep any raw action, help, placeholder, subrole or focused target even
-        // when its displayed action list is empty.
-        let canFlattenHierarchy = context.flattenInertContainers
-            && subrole == nil && help == nil && placeholder == nil && actions.isEmpty
-            && !(context.focusedElement.map { CFEqual($0, root) } ?? false)
         if shouldElideNode(
             role: role,
             title: displayTitle,
@@ -971,7 +964,7 @@ private struct TreeRenderer {
             actions: prettyActions,
             childCount: childElements.count,
             genericTextSummary: genericTextSummary,
-            webAreaDepth: canFlattenHierarchy ? nil : webAreaDepth,
+            webAreaDepth: webAreaDepth,
             preservesCompactGenericActionTarget: rendersCompactGenericActionTarget
         ) {
             for child in childElements {
@@ -2652,6 +2645,8 @@ public enum AccessibilityReadBenchmark {
         public let axMilliseconds: Double
         public let axCalls: [String: Int]
         public let lineMilliseconds: Double
+        // Match the production snapshot lifetime: action targets stay alive until the next read replaces them.
+        let retainedRecords: [Int: ElementRecord]
     }
 
     public static func read(pid: Int32, name: String, bundleIdentifier: String) throws -> Result {
@@ -2659,7 +2654,6 @@ public enum AccessibilityReadBenchmark {
         guard AXIsProcessTrusted() else {
             throw ComputerUseError.permissionDenied("Direct benchmark requires inherited Accessibility permission")
         }
-        return try AXSnapshotReadCache.withSnapshot {
         let stats = AXReadStatistics()
         let previous = Thread.current.threadDictionary[AXReadStatistics.key]
         Thread.current.threadDictionary[AXReadStatistics.key] = stats
@@ -2674,10 +2668,13 @@ public enum AccessibilityReadBenchmark {
         let context = RenderContext(windowBounds: resolveLocalFrame(of: window, windowBounds: nil),
                                     focusedElement: focused, textLimit: .max, treeLimits: .defaults)
         let start = TimingLog.now()
+        let menu = copyElement(app, attribute: kAXMenuBarAttribute)
         var renderer = TreeRenderer(context: context)
-        renderer.render(window)
-        if let menu = copyElement(app, attribute: kAXMenuBarAttribute), !CFEqual(menu, window) {
-            renderer.render(menu)
+        // Match SnapshotBuilder: only tree traversal uses batched attribute
+        // caching. App-level focus/window lookups must not prefetch AXChildren.
+        AXSnapshotReadCache.withSnapshot {
+            renderer.render(window)
+            if let menu, !CFEqual(menu, window) { renderer.render(menu) }
         }
         let treeMilliseconds = (TimingLog.now() - start) * 1000
         let textStart = TimingLog.now()
@@ -2693,7 +2690,7 @@ public enum AccessibilityReadBenchmark {
         let valid = renderer.records.allSatisfy { $0.key == $0.value.index && $0.value.element != nil }
         return Result(text: text, elementCount: renderer.records.count, indexesValid: valid,
                       treeMilliseconds: treeMilliseconds, textMilliseconds: (TimingLog.now() - textStart) * 1000,
-                      axMilliseconds: stats.milliseconds, axCalls: stats.calls, lineMilliseconds: stats.textMilliseconds)
-        }
+                      axMilliseconds: stats.milliseconds, axCalls: stats.calls, lineMilliseconds: stats.textMilliseconds,
+                      retainedRecords: renderer.records)
     }
 }

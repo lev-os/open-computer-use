@@ -77,3 +77,9 @@ A representative final Discord read took 499.93 ms: 403.06 ms in AX calls and 96
 ## Full-size continuation
 
 The operator confirmed Discord speed independently and requested that the full-size gate now be closed. Before pruning, synthetic AX fixtures run the production renderer with injected attributes, action names and settable state. Their independent logical IDs verify control roles, names, values and the backing elements/actions of numeric indexes. Boundaries include named, described, valued, identified, selected, expanded, disabled, settable, actionable, subrole, placeholder, help and focused groups. Repeated control names remain distinct targets. The first candidate will flatten only otherwise empty web hierarchy containers; all semantic boundaries stay.
+
+## Full-size candidate verified
+
+Compact text now preserves the original node-selection policy and every backend record. The zero-live-gain pruning prototype was retired. Semantic tests retain structural groups too. Four-column tab stops preserve exact depth; `group`, reversible writable/type annotations and `=` reduce repeated syntax while retaining names and values. The official App/Window preamble and native tool descriptions remain unchanged.
+
+The direct probe now keeps the previous record map until replacement and uses renderer-only attribute caching, matching production lifetime/scope. Optional snapshot capture writes once after the final timed sample. Five timed reads and zero additional warmup remain unchanged. The latest paired check is Discord 373.68 ms versus 435 ms, 37710 versus 39561 characters; Brave 88.87 ms versus 96 ms, 10762 versus 10816 characters. The browser UI now exposes 233 records rather than the earlier 222; each measured current record is retained.

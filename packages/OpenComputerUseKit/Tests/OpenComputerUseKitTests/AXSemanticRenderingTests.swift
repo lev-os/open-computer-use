@@ -49,7 +49,7 @@ final class AXSemanticRenderingTests: XCTestCase {
         func node(_ element: AXUIElement) -> Node {
             nodes.values.first { CFEqual($0.element, element) }!
         }
-        func render(flatten: Bool = false, focused: Int? = nil, compact: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
+        func render(focused: Int? = nil, compact: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
             let cache = AXSnapshotReadCache(batch: { element in
                 let node = self.node(element)
                 var values = node.attributes.mapValues { AXSnapshotReadCache.Attribute.value($0) }
@@ -62,7 +62,7 @@ final class AXSemanticRenderingTests: XCTestCase {
             })
             return AXSnapshotReadCache.withCache(cache) {
                 renderAXSemanticFixture(root: nodes[0]!.element, focused: focused.flatMap { nodes[$0]?.element },
-                                        flattenInertContainers: flatten, compactText: compact)
+                                        compactText: compact)
             }
         }
         func index(_ logicalID: Int, in records: [Int: ElementRecord]) -> Int? {
@@ -97,24 +97,25 @@ final class AXSemanticRenderingTests: XCTestCase {
         XCTAssertNotNil(fixture.index(2, in: output.records))
     }
 
-    func testOnlyInertHierarchyDisappearsAndNewIndexesTargetTheSameControls() {
+    func testStructuralContainersAndTheirChildTargetsRemainAddressable() {
         let fixture = Fixture()
-        let before = fixture.render(flatten: false)
-        let after = fixture.render(flatten: true)
+        let before = fixture.render(compact: false)
+        let after = fixture.render(compact: true)
         assertAgentTargets(fixture, before, expected: [0, 1, 3, 4])
         assertAgentTargets(fixture, after, expected: [0, 1, 3, 4])
         XCTAssertNotNil(fixture.index(2, in: before.records))
-        XCTAssertNil(fixture.index(2, in: after.records))
+        XCTAssertNotNil(fixture.index(2, in: after.records))
+        XCTAssertEqual(Set(before.records.keys), Set(after.records.keys))
         XCTAssertLessThan(after.lines.joined(separator: "\n").count, before.lines.joined(separator: "\n").count)
         let newButtonIndex = fixture.index(3, in: after.records)!
         XCTAssertTrue(CFEqual(after.records[newButtonIndex]!.element!, fixture.nodes[3]!.element))
         XCTAssertEqual(after.records[newButtonIndex]!.rawActions, ["AXPress"])
     }
 
-    func testCandidatePolicyPreservesNamesValuesAndControlRoles() {
+    func testBothFormatsPreserveNamesValuesAndControlRoles() {
         let fixture = Fixture()
-        for policy in [false, true] {
-            for compact in [false, true] { assertAgentTargets(fixture, fixture.render(flatten: policy, compact: compact), expected: [0, 1, 3, 4]) }
+        for compact in [false, true] {
+            assertAgentTargets(fixture, fixture.render(compact: compact), expected: [0, 1, 2, 3, 4])
         }
     }
 
@@ -137,7 +138,7 @@ final class AXSemanticRenderingTests: XCTestCase {
         ]
         for (name, configure, focus) in cases {
             let fixture = Fixture(); configure(fixture.nodes[2]!)
-            let output = fixture.render(flatten: true, focused: focus, compact: true)
+            let output = fixture.render(focused: focus, compact: true)
             assertAgentTargets(fixture, output, expected: [0, 1, 2, 3, 4])
             XCTAssertNotNil(fixture.index(2, in: output.records), name)
             let text = output.lines.joined(separator: "\n")
@@ -163,8 +164,8 @@ final class AXSemanticRenderingTests: XCTestCase {
         let literal = fixture.add(8, role: "AXTextField", title: "Literal (w:str)")
         literal.attributes["AXValue"] = "a = b (settable, string)" as CFString; literal.settable = true
         fixture.nodes[2]!.children.append(contentsOf: [5, 6, 7, 8])
-        for policy in [false, true] {
-            let output = fixture.render(flatten: policy, compact: true)
+        for compact in [false, true] {
+            let output = fixture.render(compact: compact)
             assertAgentTargets(fixture, output, expected: [0, 1, 3, 4, 5, 6, 7, 8])
             let text = output.lines.joined(separator: "\n")
             for value in ["off", "0.75", "0042", "Literal (w:str)", "a = b (settable, string)"] {
@@ -180,8 +181,8 @@ final class AXSemanticRenderingTests: XCTestCase {
             let layer = fixture.add(id, role: "AXGroup", title: "Layer \(id)")
             layer.children = id == 29 ? [2] : [id + 1]
         }
-        let before = fixture.render(flatten: true, compact: false)
-        let after = fixture.render(flatten: true, compact: true)
+        let before = fixture.render(compact: false)
+        let after = fixture.render(compact: true)
         assertAgentTargets(fixture, after, expected: [0, 1, 3, 4])
         XCTAssertEqual(Set(before.records.keys), Set(after.records.keys))
         func depths(_ lines: [String], compact: Bool) -> [Int] {
@@ -196,7 +197,7 @@ final class AXSemanticRenderingTests: XCTestCase {
         XCTAssertEqual(depths(before.lines, compact: false), depths(after.lines, compact: true))
         let buttonIndex = fixture.index(3, in: after.records)!
         let linePosition = after.lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("\(buttonIndex) ") }!
-        XCTAssertEqual(depths(after.lines, compact: true)[linePosition], 22)
+        XCTAssertEqual(depths(after.lines, compact: true)[linePosition], 23)
         for index in before.records.keys {
             let old = before.records[index]!, new = after.records[index]!
             XCTAssertTrue(CFEqual(old.element!, new.element!))
@@ -234,12 +235,25 @@ final class AXSemanticRenderingTests: XCTestCase {
         }
     }
 
+    func testRetainedElementHandlesDoNotRetainOldValuesAcrossReads() {
+        let fixture = Fixture()
+        let before = fixture.render(compact: true)
+        fixture.nodes[4]!.attributes["AXValue"] = "updated@example.invalid" as CFString
+        let after = withExtendedLifetime(before) { fixture.render(compact: true) }
+        XCTAssertTrue(before.lines.joined(separator: "\n").contains("person@example.invalid"))
+        XCTAssertTrue(after.lines.joined(separator: "\n").contains("updated@example.invalid"))
+        XCTAssertFalse(after.lines.joined(separator: "\n").contains("person@example.invalid"))
+        let old = before.records[fixture.index(4, in: before.records)!]!
+        let new = after.records[fixture.index(4, in: after.records)!]!
+        XCTAssertTrue(CFEqual(old.element!, new.element!))
+    }
+
     func testRepeatedControlNamesRemainDistinctActionTargets() {
         let fixture = Fixture()
         let second = fixture.add(5, role: "AXButton", title: "Submit")
         second.actions = ["AXPress"]
         fixture.nodes[2]!.children.append(5)
-        let output = fixture.render(flatten: true)
+        let output = fixture.render(compact: true)
         assertAgentTargets(fixture, output, expected: [0, 1, 3, 4, 5])
         XCTAssertNotEqual(fixture.index(3, in: output.records), fixture.index(5, in: output.records))
     }
