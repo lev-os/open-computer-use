@@ -29,7 +29,7 @@ Use `experiments/parity/act-bench.mjs`, `swift build`, `swift test`, and fixture
 - [x] Read brief, checkout rules and workstream state; verified clean parity-act at the accepted base.
 - [x] Baseline measurements: three sequences per engine on the real-input fixture. Initial synthetic-bridge and unscaled-coordinate samples are excluded.
 - [ ] Bounded action changes and before/after measurements: blocked by Developer ID signing and development permissions.
-- [ ] Final checks, history and committed report references (benchmark delivery only; engine acceptance remains blocked).
+- [x] Final build, syntax/documentation checks and history for benchmark delivery. Three final sequences per engine are recorded in the external lane report. Engine acceptance remains blocked.
 
 ## Decisions
 - 2026-10-30: Graph indexing failed because an unverified CBM generation is active. Use direct source inspection; do not restart or replace the shared graph service.
