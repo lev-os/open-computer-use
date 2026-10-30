@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { fixtureInputValue } from './act-value.mjs';
 
 const [engine, runArg = '3'] = process.argv.slice(2);
 const runs = Number(runArg);
@@ -48,7 +49,7 @@ try {
   const dragPad = fixture.elements.find(e => e.identifier === 'fixture-drag-pad').frame;
   const drag = [[dragPad.x + 20, dragPad.y + 30], [dragPad.x + 100, dragPad.y + 40]];
   // This exact sequence executes in each engine session. Startup is outside timers.
-  async function sequence(a, count, points, windowWidth, checkMode) {
+  async function sequence(a, count, points, windowWidth, checkMode, inputValue) {
     var rows = [];
     var state = String(await a.getAXState({ emit: false, disableDiffing: true }));
     // Coordinate actions use screenshot pixels, fixture frames use window points.
@@ -75,10 +76,6 @@ try {
       var match = line?.match(/^\s*(\d+)\s/);
       if (!match) throw new Error('Fixture element missing: ' + id);
       return Number(match[1]);
-    }
-    function inputValue(text) {
-      var line = text.split('\n').find(l => l.includes('fixture-input'));
-      return line ? (line.match(/Value: (.*?)(?:,? ID:| Frame:|$)/)?.[1]?.replace(/,$/, '').trim() || '') : undefined;
     }
     async function step(run, name, action, skipRead = false) {
       var previousState = state;
@@ -222,7 +219,7 @@ try {
   let rows;
   if (engine === 'codex') {
     const cu = path.join(os.homedir(), '.agents/skills/tools/references/computer-use/scripts/cu.mjs');
-    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\n${process.env.ACT_BENCH_CAPTURE ? 'await shot(actFixture, "act-fixture-current");' : ''}\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width}, ${JSON.stringify(process.env.OCU_CHECK_MODE || '')});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
+    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\n${process.env.ACT_BENCH_CAPTURE ? 'await shot(actFixture, "act-fixture-current");' : ''}\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width}, ${JSON.stringify(process.env.OCU_CHECK_MODE || '')}, ${fixtureInputValue.toString()});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
     execFileSync('node', [cu, 'reset'], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 30000 });
     let output = execFileSync('node', [cu, 'js', code], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 180000, maxBuffer: 8 * 1024 * 1024 });
     const spilled = output.match(/full text in (\S+?\.txt)/);
@@ -233,7 +230,7 @@ try {
   } else {
     native = new NativeSession();
     await native.rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'act-bench', version: '1' } });
-    rows = await sequence(native.facade(), runs, drag, fixture.windowBounds.width, process.env.OCU_CHECK_MODE || '');
+    rows = await sequence(native.facade(), runs, drag, fixture.windowBounds.width, process.env.OCU_CHECK_MODE || '', fixtureInputValue);
   }
   const idle = Math.min(5000, Math.max(0, Number(process.env.ACT_BENCH_IDLE_MS || 0)));
   if (idle) await new Promise(resolve => setTimeout(resolve, idle));
