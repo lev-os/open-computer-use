@@ -388,7 +388,7 @@ locked_use_requested="${OPEN_COMPUTER_USE_INCLUDE_LOCKED_USE:-auto}"
 locked_use_identity="$(resolve_codesign_identity || true)"
 if [[ "$locked_use_requested" == auto ]]; then
   locked_use_requested=0
-  if [[ "$configuration" == release && -n "$locked_use_identity" && "$locked_use_identity" != - ]]; then
+  if [[ "$app_variant" == release && -n "$locked_use_identity" && "$locked_use_identity" != - ]]; then
     locked_use_requested=1
   fi
 fi
