@@ -24,7 +24,8 @@ for (let i = 0; i < ${reads}; i++) {
   var __s = String(await __a.getAXState({ emit: false, disableDiffing: true }));
   __r.push([Date.now() - __t, __s.length]);
 }
-nodeRepl.write("BENCH " + JSON.stringify(__r));`;
+nodeRepl.write("BENCH " + JSON.stringify(__r));
+${process.env.OCU_CODEX_SNAPSHOT && engine === "codex" ? 'nodeRepl.write("SNAPSHOTJSON " + JSON.stringify(__s));' : ''}`;
 
 const LOCK = "/tmp/ocu-parity.lock";
 for (let i = 0; ; i++) {
@@ -60,6 +61,11 @@ try {
   }
 } finally {
   fs.rmSync(LOCK, { recursive: true, force: true });
+}
+if (engine === "codex" && process.env.OCU_CODEX_SNAPSHOT) {
+  const snapshot = out.match(/SNAPSHOTJSON ("(?:[^"\\]|\\.)*")/);
+  if (!snapshot) throw new Error("benchmark snapshot marker missing");
+  fs.writeFileSync(process.env.OCU_CODEX_SNAPSHOT, JSON.parse(snapshot[1]));
 }
 if (engine === "ocu-direct") {
   const result = JSON.parse(out);
