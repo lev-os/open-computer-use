@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // node experiments/parity/act-bench.mjs <codex|ocu> [runs=3]
 // OCU_BIN: native executable (or npm ocu launcher); default: ocu.
-// OCU_ACTION_READ_BACK: 1 (default) or 0. Codex keeps its engine default.
+// OCU_ACTION_READ_BACK: default (bounded), 1 (full) or 0. Codex keeps its default.
 // Uses only the running checkout fixture. Never points at an arbitrary app.
 import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -141,8 +141,10 @@ try {
   class NativeSession {
     constructor() {
       this.id = 0; this.pending = new Map();
-      this.child = spawn(process.env.OCU_BIN || 'ocu', ['mcp'], { stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, OPEN_COMPUTER_USE_ACTION_READ_BACK: process.env.OCU_ACTION_READ_BACK || '1' } });
+      const nativeEnv = { ...process.env };
+      if (!process.env.OCU_ACTION_READ_BACK || process.env.OCU_ACTION_READ_BACK === 'default') delete nativeEnv.OPEN_COMPUTER_USE_ACTION_READ_BACK;
+      else nativeEnv.OPEN_COMPUTER_USE_ACTION_READ_BACK = process.env.OCU_ACTION_READ_BACK;
+      this.child = spawn(process.env.OCU_BIN || 'ocu', ['mcp'], { stdio: ['pipe', 'pipe', 'pipe'], env: nativeEnv });
       this.stderr = '';
       this.child.stderr.on('data', d => { this.stderr = (this.stderr + d).slice(-4000); });
       const fail = e => { for (const p of this.pending.values()) { clearTimeout(p.timer); p.reject(e); } this.pending.clear(); };
@@ -209,7 +211,7 @@ try {
     return [action, { action_ms: samples.map(r => r.action_ms), median_action_ms: median('action_ms'), read_ms: samples.map(r => r.read_ms), median_read_ms: median('read_ms'), errors: samples.filter(r => r.error || r.read_error).length, verified_effects: samples.filter(r => r.verified === true).length, unchanged_or_unverified_effects: samples.filter(r => r.verified === false).length }];
   }));
   console.log(JSON.stringify({ engine, app, runs, ocu_bin: engine === 'ocu' ? process.env.OCU_BIN || 'ocu' : null,
-    action_read_back: engine === 'ocu' ? process.env.OCU_ACTION_READ_BACK || '1' : 'engine default',
+    action_read_back: engine === 'ocu' ? process.env.OCU_ACTION_READ_BACK || 'native default' : 'engine default',
     visual_cursor: process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR || 'engine default',
     before_fixture: fixture, after_fixture: finalState, summary, rows }));
 } finally {

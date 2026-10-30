@@ -2,6 +2,12 @@ import XCTest
 @testable import OpenComputerUseKit
 
 final class ActionVerificationTests: XCTestCase {
+    func testDefaultStateReadBackIsBoundedAndFullIsExplicit() {
+        XCTAssertTrue(actionReadBackEnabled(environment: [:]))
+        XCTAssertFalse(fullActionReadBackEnabled(environment: [:]))
+        XCTAssertTrue(fullActionReadBackEnabled(environment: ["OPEN_COMPUTER_USE_ACTION_READ_BACK": "1"]))
+        XCTAssertFalse(fullActionReadBackEnabled(environment: ["OPEN_COMPUTER_USE_ACTION_READ_BACK": "0"]))
+    }
     func testIgnoredValueWriteAndChangedWindowCannotReportSuccess() {
         XCTAssertThrowsError(try applyVerifiedActionValue("new", timeout: 0, validate: {}, write: {}, read: { "old" }))
         var wrote = false

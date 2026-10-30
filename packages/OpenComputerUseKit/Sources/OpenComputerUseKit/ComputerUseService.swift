@@ -247,7 +247,8 @@ func globalPointerFallbacksEnabled(environment: [String: String]) -> Bool {
     return ["1", "true", "yes", "on"].contains(rawValue)
 }
 
-/// Whether an action's result reads the window back (settle, then a full snapshot).
+/// Whether an action returns state. Default state is bounded; explicit 1/full
+/// retains the legacy full snapshot and screenshot.
 /// A program driving the tools (the `js` REPL adapter) reads state explicitly and
 /// sets `OPEN_COMPUTER_USE_ACTION_READ_BACK=0`, so its actions return a short status.
 func actionReadBackEnabled(environment: [String: String]) -> Bool {
@@ -259,6 +260,13 @@ func actionReadBackEnabled(environment: [String: String]) -> Bool {
     }
 
     return !["0", "false", "no", "off"].contains(rawValue)
+}
+
+/// Explicit 1/full preserves the legacy full tree and screenshot result. The
+/// default still reads state back, but uses bounded cached-handle observation.
+func fullActionReadBackEnabled(environment: [String: String]) -> Bool {
+    guard let value = environment["OPEN_COMPUTER_USE_ACTION_READ_BACK"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else { return false }
+    return ["1", "true", "yes", "on", "full"].contains(value)
 }
 
 /// How a `drag` is delivered. `drag` has no method argument; the path is decided
@@ -562,23 +570,25 @@ public final class ComputerUseService {
 
     public init() {}
 
-    /// An action's result reads the window back, so the app gets a beat to redraw
-    /// first. Without read-back nothing is read, so there is no wait.
+    /// Keep the legacy settle pause only for explicitly requested full snapshots.
     private func pauseBeforeReadBack(_ interval: TimeInterval) {
-        guard actionReadBack else {
+        guard fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) else {
             return
         }
 
         Thread.sleep(forTimeInterval: interval)
     }
 
-    /// The result an action returns: the after-action snapshot, or a short status
-    /// when read-back is off.
+    /// Bounded state by default, full state when explicitly requested, or status
+    /// when read-back is off. Effect verification is independent of this flag.
     private func actionResult(for query: String, recoveryPolicy: SnapshotRecoveryPolicy = .allowActivation) throws -> ToolCallResult {
         guard actionReadBack else {
             return .text("ok")
         }
 
+        if !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+            return try boundedActionResult(currentSnapshot(for: query))
+        }
         return snapshotResult(for: try refreshSnapshot(for: query, recoveryPolicy: recoveryPolicy), style: .actionResult)
     }
 
@@ -961,10 +971,7 @@ public final class ComputerUseService {
         if keyMethod == .skyKey {
             let target = try skyKeyTarget(for: snapshot)
             try InputSimulation.typeTextWithSkyLight(text, windowID: target.windowID, pid: target.pid)
-            return snapshotResult(
-                for: try refreshSnapshot(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod)),
-                style: .actionResult
-            )
+            return try actionResult(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod))
         }
 
         if try typeTextBySettingFocusedValueIfAvailable(text, in: snapshot) {
@@ -992,10 +999,7 @@ public final class ComputerUseService {
         if keyMethod == .skyKey {
             let target = try skyKeyTarget(for: snapshot)
             try InputSimulation.pressKeyWithSkyLight(key, windowID: target.windowID, pid: target.pid)
-            return snapshotResult(
-                for: try refreshSnapshot(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod)),
-                style: .actionResult
-            )
+            return try actionResult(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod))
         }
 
         try InputSimulation.pressKey(key, pid: snapshot.app.pid)

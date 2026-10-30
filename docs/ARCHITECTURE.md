@@ -63,6 +63,8 @@
 
 ### 3. Tool Service 层
 
+Action results now use bounded cached-target state by default (up to twelve handles plus focus/selection). They do not walk the tree or capture a screenshot. `OPEN_COMPUTER_USE_ACTION_READ_BACK=1` requests the legacy full result; `0` suppresses state output. Effect verification remains mandatory for value writes, scroll and drag. Explicit full reads keep the existing renderer and budgets.
+
 - `ComputerUseService` 负责把 Computer Use tool 请求映射到本地能力，`ComputerUseToolDispatcher` 则把 native tool 的参数解析与 service 方法分发收敛成 MCP server 和 `open-computer-use call` 共用的一层。
 - Codex plugin 的 `.mcp.json` 默认不再把 native tools 直接暴露给模型，而是启动 `scripts/node-repl/open-computer-use-repl.mjs`。adapter 以 child MCP client 连接同一个 native runtime，并只对外列出 `js` / `js_reset`；JavaScript 通过异步 app-bound API（`cua.getApp(...)`、`app.click(...)`、`app.getAXState()` 等）调用 native tools。
 - REPL 使用 Node.js 自带的 evaluator，因此保留 top-level `await` 和跨调用 lexical bindings；真正执行代码的 kernel 位于 Worker 中，超时会终止 Worker 并重建干净 session，避免 `while (true)` 挂死 MCP transport。

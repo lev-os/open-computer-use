@@ -95,3 +95,45 @@ func requireObservedActionChange(_ name: String, before: [String: String],
     } while true
     throw ComputerUseError.stateUnavailable("\(name) delivered input but no observable accessibility value or window geometry change was verified; the target may be at a boundary or ignore this input")
 }
+
+/// Default action read-back uses a fixed number of existing handles. It does not
+/// reindex the tree or capture a screenshot. Changes are relative to the last
+/// explicit snapshot; callers request a full read when structure changes.
+func boundedActionResult(_ snapshot: AppSnapshot) throws -> ToolCallResult {
+    var lines = ["App=\(snapshot.app.bundleIdentifier ?? snapshot.app.name) (pid \(snapshot.app.pid))",
+                 "Bounded action state; cached value changes from the last explicit snapshot:"]
+    if snapshot.mode == .fixture {
+        guard let state = try FixtureBridge.readState() else {
+            throw ComputerUseError.stateUnavailable("Fixture state is no longer available")
+        }
+        for current in state.elements {
+            if let value = current.value, value != snapshot.elements[current.index]?.value {
+                lines.append("\(current.index) \(current.role) ID: \(current.identifier), Value: \(String(value.prefix(200)))")
+            }
+        }
+        lines.append("Focused identifier: \(state.focusedIdentifier ?? "none")")
+    } else {
+        try requireUsableComputerUseSession()
+        for record in snapshot.elements.values.sorted(by: { $0.index < $1.index }).prefix(12) {
+            guard let element = record.element else { continue }
+            var value: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
+                  let scalar = actionScalar(value), scalar != (record.value ?? record.title) else { continue }
+            lines.append("\(record.index) \(record.role ?? "element") ID: \(record.identifier ?? ""), Value: \(String(scalar.prefix(200)))")
+        }
+        var value: CFTypeRef?
+        if AXUIElementCopyAttributeValue(AXUIElementCreateApplication(snapshot.app.pid), kAXFocusedUIElementAttribute as CFString, &value) == .success,
+           let value, CFGetTypeID(value) == AXUIElementGetTypeID() {
+            let focused = value as! AXUIElement
+            try requireActionTarget(focused, in: snapshot)
+            if let record = snapshot.elements.values.first(where: { $0.element.map { CFEqual($0, focused) } ?? false }) {
+                lines.append("The focused UI element is \(record.index) \(record.role ?? "element").")
+            }
+            if let range = AccessibilityTextSelection.readRange(of: focused) {
+                lines.append("Selected UTF-16 range: \(range.location),\(range.length)")
+            }
+        }
+    }
+    lines.append("No tree walk or screenshot. Request get_app_state for new elements or changed layout.")
+    return .text(lines.joined(separator: "\n"))
+}
