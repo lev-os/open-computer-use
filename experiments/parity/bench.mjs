@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Parity benchmark: time full accessibility-tree reads of one app on Codex's engine or on open-computer-use.
-//   node bench.mjs <codex|ocu> <App name> [reads=5]
+//   node bench.mjs <codex|ocu|ocu-direct> <App name> [reads=5]
 // codex: runs through ~/.agents/skills/tools/references/computer-use/scripts/cu.mjs (Codex's cua_repl).
 // ocu:   runs `$OCU_BIN js --json` (default: ocu on PATH). Point OCU_BIN at a dev build to compare.
 // Times are measured inside the engine session, so session start-up is not counted.
@@ -13,8 +13,8 @@ import path from "node:path";
 
 const [engine, app, readsArg] = process.argv.slice(2);
 const reads = Number(readsArg || 5);
-if (!["codex", "ocu"].includes(engine) || !app) {
-  console.error("usage: node bench.mjs <codex|ocu> <App name> [reads=5]");
+if (!["codex", "ocu", "ocu-direct"].includes(engine) || !app) {
+  console.error("usage: node bench.mjs <codex|ocu|ocu-direct> <App name> [reads=5]");
   process.exit(2);
 }
 const code = `var __a = await cua.getApp(${JSON.stringify(app)}, { initialState: false });
@@ -41,6 +41,15 @@ try {
     // cu moves output over 20 KB to a file and prints its path; Codex's engine can print the tree on getApp.
     const spilled = out.match(/full text in (\S+?\.txt)/);
     if (spilled) out = fs.readFileSync(spilled[1], "utf8");
+  } else if (engine === "ocu-direct") {
+    const bundle = { "Discord": "com.hnc.Discord", "Brave Browser": "com.brave.Browser" }[app];
+    if (!bundle) throw new Error("direct read benchmark supports Discord and Brave Browser only");
+    const pids = execFileSync("pgrep", ["-x", app], { encoding: "utf8" }).trim().split(/\s+/);
+    if (pids.length !== 1) throw new Error(`expected one running ${app} process`);
+    const args = [pids[0], app, bundle, String(reads)];
+    if (process.env.OCU_READ_SNAPSHOT) args.push(process.env.OCU_READ_SNAPSHOT);
+    out = execFileSync(process.env.OCU_READ_BIN || ".build/release/OCUReadBench", args,
+      { encoding: "utf8", env: process.env, timeout: 180000 });
   } else {
     const f = path.join(os.tmpdir(), `ocu-parity-${process.pid}.mjs`);
     fs.writeFileSync(f, code);
@@ -51,6 +60,11 @@ try {
   }
 } finally {
   fs.rmSync(LOCK, { recursive: true, force: true });
+}
+if (engine === "ocu-direct") {
+  const result = JSON.parse(out);
+  console.log(JSON.stringify({ ...result, evidence: "direct AX tool; signed dev app acceptance pending" }));
+  process.exit(0);
 }
 const m = out.match(/BENCH (\[\[.*?\]\])/s);
 if (!m) { console.error("bench: no result\n" + out.slice(0, 2000)); process.exit(1); }

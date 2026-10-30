@@ -81,3 +81,7 @@ The installed release still returned an image when screenshot omission was reque
 2. Verify runtime permissions only for the stable signed app; follow the brief stop condition if denied.
 3. Package an optimized build with the dev identity and add per-phase timers before read optimization.
 4. Add and verify optional diff reconstruction, make measured changes one at a time, and complete final development-candidate benchmarks and Swift checks.
+
+## Direct-tool continuation
+
+The operator authorized a plain command-line Swift harness after `AXIsProcessTrusted()` returned true. Direct AX reads by live process ID work for both allowed apps, although NSWorkspace inventory is empty in this pane. The harness reuses TreeRenderer, keeps all production app/session guards intact, reads only an existing window and never raises or launches an app. Build with release optimization and use `bench.mjs ocu-direct` under the shared lock. These results are direct-tool evidence; final signed-dev acceptance remains pending.

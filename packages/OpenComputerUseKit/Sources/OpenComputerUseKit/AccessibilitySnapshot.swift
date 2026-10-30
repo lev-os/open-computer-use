@@ -962,6 +962,7 @@ private struct TreeRenderer {
         }
 
         nextIndex += 1
+        let lineStart = TimingLog.enabled ? TimingLog.now() : 0
 
         let traitsSegment = traits.isEmpty ? "" : " (\(traits.joined(separator: ", ")))"
         let titleSegment = displayTitle.map { " \($0)" } ?? ""
@@ -1006,6 +1007,9 @@ private struct TreeRenderer {
 
         let lineBody = "\(linePrefix)\(traitsSegment)\(titleSegment)\(rowSummarySegment)\(labelSegment)\(helpSegment)\(urlSegment)\(identifierSegment)\(valueSegment)\(placeholderSegment)\(frameSegment)"
         lines.append("\(String(repeating: "\t", count: depth))\(lineBody)\(actionsSegment)")
+
+        if TimingLog.enabled { AXReadStatistics.current?.textMilliseconds += (TimingLog.now() - lineStart) * 1000 }
+
 
         let record = ElementRecord(
             index: index,
@@ -1255,7 +1259,7 @@ private func valueTypeTrait(of element: AXUIElement) -> String? {
 
 private func copyElement(_ element: AXUIElement, attribute: String) -> AXUIElement? {
     var value: CFTypeRef?
-    let error = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+    let error = AXReadStatistics.measure("attribute") { AXUIElementCopyAttributeValue(element, attribute as CFString, &value) }
     guard error == .success, let value else {
         return nil
     }
@@ -1265,7 +1269,7 @@ private func copyElement(_ element: AXUIElement, attribute: String) -> AXUIEleme
 
 private func copyArray(_ element: AXUIElement, attribute: String) -> [AXUIElement]? {
     var value: CFTypeRef?
-    let error = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+    let error = AXReadStatistics.measure("attribute") { AXUIElementCopyAttributeValue(element, attribute as CFString, &value) }
     guard error == .success, let value else {
         return nil
     }
@@ -1275,7 +1279,7 @@ private func copyArray(_ element: AXUIElement, attribute: String) -> [AXUIElemen
 
 private func copyActions(_ element: AXUIElement) -> [String]? {
     var actions: CFArray?
-    let error = AXUIElementCopyActionNames(element, &actions)
+    let error = AXReadStatistics.measure("actions") { AXUIElementCopyActionNames(element, &actions) }
     guard error == .success else {
         return nil
     }
@@ -1285,7 +1289,7 @@ private func copyActions(_ element: AXUIElement) -> [String]? {
 
 private func attributeValue(of element: AXUIElement, attribute: String) -> CFTypeRef? {
     var value: CFTypeRef?
-    let error = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+    let error = AXReadStatistics.measure("attribute") { AXUIElementCopyAttributeValue(element, attribute as CFString, &value) }
     guard error == .success else {
         return nil
     }
@@ -1334,7 +1338,7 @@ private func pid(of element: AXUIElement) -> pid_t {
 
 private func isSettable(of element: AXUIElement, attribute: String) -> Bool {
     var settable = DarwinBoolean(false)
-    let error = AXUIElementIsAttributeSettable(element, attribute as CFString, &settable)
+    let error = AXReadStatistics.measure("settable") { AXUIElementIsAttributeSettable(element, attribute as CFString, &settable) }
     return error == .success && settable.boolValue
 }
 
@@ -1626,8 +1630,8 @@ private func displayIdentifierSegment(for element: AXUIElement, role: String, id
 private func resolveLocalFrame(of element: AXUIElement, windowBounds: CGRect?) -> CGRect? {
     var positionValue: CFTypeRef?
     var sizeValue: CFTypeRef?
-    let positionError = AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionValue)
-    let sizeError = AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue)
+    let positionError = AXReadStatistics.measure("attribute") { AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionValue) }
+    let sizeError = AXReadStatistics.measure("attribute") { AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) }
     guard
         positionError == .success,
         sizeError == .success,
@@ -2617,4 +2621,62 @@ func targetedRoleEquals(_ actual: String?, _ wanted: String) -> Bool {
         return r
     }
     return normalize(actual) == normalize(wanted)
+}
+
+
+/// Experimental read-only benchmark entry point. It uses the production renderer,
+/// but addresses an existing AX process directly and never launches or raises it.
+/// This does not bypass session checks in ComputerUseService or action tools.
+@_spi(ReadBenchmark)
+public enum AccessibilityReadBenchmark {
+    public struct Result {
+        public let text: String
+        public let elementCount: Int
+        public let indexesValid: Bool
+        public let treeMilliseconds: Double
+        public let textMilliseconds: Double
+        public let axMilliseconds: Double
+        public let axCalls: [String: Int]
+        public let lineMilliseconds: Double
+    }
+
+    public static func read(pid: Int32, name: String, bundleIdentifier: String) throws -> Result {
+        guard AXIsProcessTrusted() else {
+            throw ComputerUseError.permissionDenied("Direct benchmark requires inherited Accessibility permission")
+        }
+        let stats = AXReadStatistics()
+        let previous = Thread.current.threadDictionary[AXReadStatistics.key]
+        Thread.current.threadDictionary[AXReadStatistics.key] = stats
+        defer { Thread.current.threadDictionary[AXReadStatistics.key] = previous }
+        let app = AXUIElementCreateApplication(pid)
+        guard let window = copyElement(app, attribute: kAXFocusedWindowAttribute)
+                ?? copyArray(app, attribute: kAXWindowsAttribute)?.first,
+              boolValue(of: window, attribute: kAXMinimizedAttribute) != true else {
+            throw ComputerUseError.stateUnavailable("Direct benchmark requires an existing non-minimized AX window")
+        }
+        let focused = copyElement(app, attribute: kAXFocusedUIElementAttribute)
+        let context = RenderContext(windowBounds: resolveLocalFrame(of: window, windowBounds: nil),
+                                    focusedElement: focused, textLimit: .max, treeLimits: .defaults)
+        let start = TimingLog.now()
+        var renderer = TreeRenderer(context: context)
+        renderer.render(window)
+        if let menu = copyElement(app, attribute: kAXMenuBarAttribute), !CFEqual(menu, window) {
+            renderer.render(menu)
+        }
+        let treeMilliseconds = (TimingLog.now() - start) * 1000
+        let textStart = TimingLog.now()
+        var lines = ["App=\(bundleIdentifier) (pid \(pid))",
+                     "Window: \(quoted(displayWindowTitle(stringValue(of: window, attribute: kAXTitleAttribute), appName: name))), App: \(name)."]
+        lines.append(contentsOf: renderer.lines)
+        if let selected = focused.flatMap({ copySelectedText($0, textLimit: .max) }), !selected.isEmpty {
+            lines.append(""); lines.append("Selected text: [\(selected)]")
+        } else if let summary = renderer.focusedSummary {
+            lines.append(""); lines.append("The focused UI element is \(summary).")
+        }
+        let text = lines.joined(separator: "\n")
+        let valid = renderer.records.allSatisfy { $0.key == $0.value.index && $0.value.element != nil }
+        return Result(text: text, elementCount: renderer.records.count, indexesValid: valid,
+                      treeMilliseconds: treeMilliseconds, textMilliseconds: (TimingLog.now() - textStart) * 1000,
+                      axMilliseconds: stats.milliseconds, axCalls: stats.calls, lineMilliseconds: stats.textMilliseconds)
+    }
 }
