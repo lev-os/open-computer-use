@@ -25,7 +25,8 @@ public func shouldUseMacOSAppAgentProxy(
     command: OpenComputerUseCLICommand,
     proxyDisabled: Bool,
     appBundleAvailable: Bool,
-    runningFromLaunchServicesAppInstance: Bool
+    runningFromLaunchServicesAppInstance: Bool,
+    executableInAppBundle: Bool = true
 ) -> Bool {
     guard !proxyDisabled, appBundleAvailable else {
         return false
@@ -35,7 +36,9 @@ public func shouldUseMacOSAppAgentProxy(
     case .launchOnboarding:
         return !runningFromLaunchServicesAppInstance
     case .mcp, .doctor, .lockedUseStatus, .listApps, .snapshot, .call:
-        return true
+        // A standalone build must execute its linked code, not an unrelated
+        // installed bundle discovered only for permission/onboarding support.
+        return executableInAppBundle
     case .lockedUseManagement, .turnEnded, .help, .version:
         return false
     }

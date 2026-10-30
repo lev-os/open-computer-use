@@ -247,7 +247,7 @@ try {
     action_read_back: engine === 'ocu' ? process.env.OCU_ACTION_READ_BACK || 'native default' : 'engine default',
     visual_cursor: process.env.OPEN_COMPUTER_USE_VISUAL_CURSOR || 'engine default',
     global_pointer_fallbacks: engine === 'ocu' ? 'disabled by benchmark' : 'engine default',
-    before_fixture: fixture, after_fixture: finalState, cursor_observation: cursorObservation, native_timing: process.env.OPEN_COMPUTER_USE_DEBUG_TIMING ? native?.stderr : undefined, summary, rows }));
+    before_fixture: fixture, after_fixture: finalState, cursor_observation: cursorObservation, native_timing: process.env.OPEN_COMPUTER_USE_DEBUG_TIMING || process.env.OPEN_COMPUTER_USE_DEBUG_ROUTING ? native?.stderr : undefined, summary, rows }));
 } finally {
   await native?.close();
   fs.rmSync(lock, { recursive: true });

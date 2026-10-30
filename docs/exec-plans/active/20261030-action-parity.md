@@ -45,3 +45,8 @@ JP must first produce a stable signed development app and grant its permissions.
 
 ## Evidence
 The external lane report has the raw files, exact signing command and paths, before/after tables and local commits. Runtime candidate: `10bb3cd532ec5c1a4c782a7c9e56dd359502b205`. The initial graph-index attempt failed because an unverified shared generation was active, so source discovery used direct inspection.
+
+## Product-path follow-up
+The operator found that the product executable did not reproduce the probe. Read-only app-agent metadata and an unchanged-binary A/B test prove why: the bare product selected the npm-installed October 27 app; disabling that proxy used the local fixes. Both runtime permission checks were granted. This was delegated stale code, not missing dev-app permission or a missing fix in the linked library.
+
+The product now keeps standalone execution local and preserves app-agent behavior for app-contained executables. Product-path benchmarking and routing regression tests precede the drag follow-up. The remaining action is to deliver a real fixture drag through the product while keeping pointer and session safeguards.

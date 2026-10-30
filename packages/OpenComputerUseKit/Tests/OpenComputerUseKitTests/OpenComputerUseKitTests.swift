@@ -423,6 +423,16 @@ final class OpenComputerUseKitTests: XCTestCase {
         XCTAssertNil(AppDiscovery.bestResolutionIndex(of: [], matching: "Safari"))
     }
 
+    func testStandaloneAutomationDoesNotDelegateToDiscoveredInstalledBundle() {
+        for command in [OpenComputerUseCLICommand.mcp, .doctor(), .listApps,
+                        .snapshot(app: "Fixture"), .call(.single(toolName: "list_apps", argumentsJSON: nil, argumentsFile: nil))] {
+            XCTAssertFalse(shouldUseMacOSAppAgentProxy(command: command, proxyDisabled: false,
+                appBundleAvailable: true, runningFromLaunchServicesAppInstance: false, executableInAppBundle: false))
+            XCTAssertTrue(shouldUseMacOSAppAgentProxy(command: command, proxyDisabled: false,
+                appBundleAvailable: true, runningFromLaunchServicesAppInstance: false, executableInAppBundle: true))
+        }
+    }
+
     func testMacOSAppAgentProxyDecisionKeepsNonAutomationCommandsLocal() {
         for command in [
             OpenComputerUseCLICommand.turnEnded(payload: nil),

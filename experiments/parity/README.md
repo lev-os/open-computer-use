@@ -7,11 +7,11 @@
 These commands assume an unlocked desktop terminal. For an agent pane in another audit session, use the relay below.
 
 ```sh
-swift build -c release --product OCUActionProbe
-.build/release/OCUActionProbe doctor --json
+swift build -c release --product OpenComputerUse
+.build/release/OpenComputerUse doctor --json
 node experiments/parity/act-fixture.mjs
 node experiments/parity/act-bench.mjs codex 3 > .build/codex-actions.json
-OCU_BIN=.build/release/OCUActionProbe \
+OCU_BIN=.build/release/OpenComputerUse \
   node experiments/parity/act-bench.mjs ocu 3 > .build/ocu-actions.json
 node experiments/parity/act-fixture.mjs close
 ```
@@ -27,10 +27,10 @@ Each row records in-session action time, separate full-read time, errors, state 
 The operator supplies `OCU_RELAY`. All GUI operations must run in the desktop login's audit session. Accessibility trust alone does not establish that context.
 
 ```sh
-node "$OCU_RELAY" --cwd "$PWD" -- "$PWD/.build/release/OCUActionProbe" doctor --json
+node "$OCU_RELAY" --cwd "$PWD" -- "$PWD/.build/release/OpenComputerUse" doctor --json
 node "$OCU_RELAY" --cwd "$PWD" -- node "$PWD/experiments/parity/act-fixture.mjs"
 node "$OCU_RELAY" --cwd "$PWD" \
-  --env "OCU_BIN=$PWD/.build/release/OCUActionProbe" --timeout 180000 \
+  --env "OCU_BIN=$PWD/.build/release/OpenComputerUse" --timeout 180000 \
   -- node "$PWD/experiments/parity/act-bench.mjs" ocu 3
 node experiments/parity/act-bench.mjs codex 3
 node "$OCU_RELAY" --cwd "$PWD" -- node "$PWD/experiments/parity/act-fixture.mjs" close
@@ -92,3 +92,9 @@ Real fixture only. Final action medians from three runs per engine, runtime cand
 Click, typing and scroll meet the timing limit. Keypress remains 30 ms versus 7 ms for Codex. The fixed pause is removed for the verified printable-key path, but delivery/verification remains above the target. An existing private posting path did not improve the measured result and was not retained. Normal native drag remains unverified and returns an error; working drag is not claimed.
 
 The GUI Swift suite passes: 407 tests, 8 skipped, 0 failures. The background-pane query/session failure observed at the accepted base passes in the correct desktop session. The report retains both final series, raw state/effect checks, separate read timings, hostile cases, source/binary hashes and exact signing prerequisites. Calculator, TextEdit and the signed app-agent path were not measured.
+
+## Product executable routing
+
+A standalone `.build/.../OpenComputerUse` runs the service linked into that binary. An executable inside an OCU `.app` retains app-agent routing for its own bundle. Installed-app discovery supports onboarding and permissions; it does not replace a standalone build's automation code. `OPEN_COMPUTER_USE_DEBUG_ROUTING=1` prints the selected route and executable on stderr. The separate probe remains useful for diagnostics, but product acceptance uses `OCU_BIN` pointing at `OpenComputerUse`.
+
+`agent-info.mjs` reads app-agent path/build metadata without a GUI tool call. Diagnostic agents use a lane-owned socket namespace. Its termination option accepts only that diagnostic namespace prefix.
