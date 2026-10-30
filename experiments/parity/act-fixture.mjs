@@ -11,8 +11,9 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const contents = path.join(root, '.build/ActionParityFixture.app/Contents');
 const executable = path.join(contents, 'MacOS/ActionParityFixture');
 const statePath = path.join(os.tmpdir(), 'open-computer-use-fixture/state.json');
-const close = process.argv[2] === 'close';
-if (process.argv.length > 3 || (process.argv[2] && !close)) throw new Error('usage: node act-fixture.mjs [close]');
+const mode = process.argv[2];
+const close = mode === 'close';
+if (process.argv.length > 3 || (mode && !['close', 'ignore-wheel', 'reject-values'].includes(mode))) throw new Error('usage: node act-fixture.mjs [close|ignore-wheel|reject-values]');
 const lock = '/tmp/ocu-parity.lock';
 // Serialize preparation/cleanup with reads and actions without stealing a lock.
 for (const deadline = Date.now() + 600000;;) {
@@ -36,9 +37,20 @@ try {
     if (error.code !== 'ENOENT' && error.status !== 1) throw error;
   }
   if (close) {
-    if (running) process.kill(running, 'SIGTERM');
+    if (running) {
+      process.kill(running, 'SIGTERM');
+      for (const deadline = Date.now() + 5000;;) {
+        try { process.kill(running, 0); } catch (error) {
+          if (error.code === 'ESRCH') break;
+          throw error;
+        }
+        if (Date.now() >= deadline) throw new Error('Own fixture did not exit within five seconds');
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
     console.log(running ? 'Closed own fixture' : 'Own fixture is not running');
   } else if (running) {
+    if (mode) throw new Error('Close own fixture before selecting a test mode');
     console.log('Own fixture already running: ' + running);
   } else {
     execFileSync('swift', ['build', '--product', 'OpenComputerUseFixture'], { cwd: root, stdio: 'inherit' });
@@ -56,7 +68,7 @@ try {
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>\n`);
-    execFileSync('open', [path.dirname(contents)]);
+    execFileSync('open', [path.dirname(contents), '--args', ...(mode ? ['--' + mode] : [])]);
     console.log('Launched own fixture: ' + path.dirname(contents));
   }
 } finally {

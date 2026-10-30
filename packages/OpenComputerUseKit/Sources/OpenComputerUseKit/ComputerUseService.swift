@@ -680,6 +680,7 @@ public final class ComputerUseService {
 
         if let elementIndex {
             let record = try lookupElement(snapshot: snapshot, index: elementIndex)
+            if let element = record.element { try requireActionTarget(element, in: snapshot) }
             guard let windowPoint = clickPoint(for: record, snapshot: snapshot) else {
                 throw ComputerUseError.stateUnavailable("element \(elementIndex) has no clickable frame")
             }
@@ -855,17 +856,39 @@ public final class ComputerUseService {
             guard let identifier = record.identifier else {
                 throw ComputerUseError.invalidArguments("fixture scroll requires an identifier-backed element")
             }
+            guard identifier == "fixture-scroll-view" else {
+                throw ComputerUseError.invalidArguments("fixture scroll requires its scroll area")
+            }
+            let old = try FixtureBridge.readState()?.elements.first { $0.identifier == "fixture-scroll-status" }?.value ?? ""
             try FixtureBridge.post(FixtureCommand(kind: "scroll", identifier: identifier, direction: normalized, pages: pages))
-            Thread.sleep(forTimeInterval: 0.15)
+            try requireObservedActionChange("scroll", before: ["offset": old], validate: {}, read: {
+                guard let value = try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == "fixture-scroll-status" })?.value else { return [:] }
+                return ["offset": value]
+            })
             return try actionResult(for: query)
         }
+
+        guard let scrollElement = record.element else {
+            throw ComputerUseError.stateUnavailable("scroll requires a live accessibility target")
+        }
+        try requireActionTarget(scrollElement, in: snapshot)
+        let before = actionObservedValues(snapshot, scrollOnly: true)
 
         if let repeatCount = integralScrollPageCount(pages),
            let rawAction = record.rawActions.first(where: { $0.caseInsensitiveCompare("AXScroll\(normalized.capitalized)ByPage") == .orderedSame }),
            let element = record.element {
             for _ in 0..<repeatCount {
                 try requireUsableComputerUseSession()
-                _ = AXUIElementPerformAction(element, rawAction as CFString)
+                let result = AXUIElementPerformAction(element, rawAction as CFString)
+                if result != .success {
+                    guard [.attributeUnsupported, .actionUnsupported].contains(result),
+                          let point = try globalPoint(for: record, snapshot: snapshot) else {
+                        throw ComputerUseError.stateUnavailable("scroll accessibility action failed with \(result.rawValue)")
+                    }
+                    try performScrollEvent(at: point, direction: normalized, pages: pages,
+                        targetDescription: "element_index=\(elementIndex)", snapshot: snapshot)
+                    break
+                }
                 Thread.sleep(forTimeInterval: 0.05)
             }
         } else if let point = try globalPoint(for: record, snapshot: snapshot) {
@@ -880,20 +903,35 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("element \(elementIndex) has no scrollable frame")
         }
 
+        try requireObservedActionChange("scroll", before: before,
+            validate: { try requireActionTarget(scrollElement, in: snapshot) },
+            read: { actionObservedValues(snapshot, scrollOnly: true) })
         return try actionResult(for: query)
     }
 
     public func drag(app query: String, fromX: Double, fromY: Double, toX: Double, toY: Double) throws -> ToolCallResult {
+        guard [fromX, fromY, toX, toY].allSatisfy(\.isFinite), fromX != toX || fromY != toY else {
+            throw ComputerUseError.invalidArguments("drag requires finite coordinates and a nonzero movement")
+        }
         let snapshot = try currentSnapshot(for: query)
         guard snapshot.observation.includeScreenshot else {
             throw ComputerUseError.stateUnavailable(SnapshotObservationOptions.screenshotOmittedNote + "; request a screenshot before screenshot-coordinate actions")
         }
         if snapshot.mode == .fixture {
+            let old = try FixtureBridge.readState()?.elements.first { $0.identifier == "fixture-drag-status" }?.value ?? ""
             try FixtureBridge.post(FixtureCommand(kind: "drag", identifier: "fixture-drag-pad", x: fromX, y: fromY, toX: toX, toY: toY))
-            Thread.sleep(forTimeInterval: 0.15)
+            try requireObservedActionChange("drag", before: ["drag": old], validate: {}, read: {
+                guard let value = try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == "fixture-drag-status" })?.value else { return [:] }
+                return ["drag": value]
+            })
             return try actionResult(for: query)
         }
 
+        guard let window = snapshot.windowElement else {
+            throw ComputerUseError.stateUnavailable("drag requires a captured window")
+        }
+        try requireActionTarget(window, in: snapshot)
+        let before = actionObservedValues(snapshot)
         let start = try screenshotToGlobalPoint(snapshot: snapshot, x: fromX, y: fromY)
         let end = try screenshotToGlobalPoint(snapshot: snapshot, x: toX, y: toY)
         let path = try performDragEvent(
@@ -902,6 +940,9 @@ public final class ComputerUseService {
             targetDescription: "from=(\(Int(fromX)), \(Int(fromY))) to=(\(Int(toX)), \(Int(toY)))",
             snapshot: snapshot
         )
+        try requireObservedActionChange("drag", before: before,
+            validate: { try requireActionTarget(window, in: snapshot) },
+            read: { actionObservedValues(snapshot) })
         return appendingDragDeliveryNote(
             to: try actionResult(for: query),
             path: path
@@ -990,8 +1031,18 @@ public final class ComputerUseService {
 
             let cursorTarget = visualCursorTarget(for: record, snapshot: snapshot)
             moveVisualCursor(to: cursorTarget)
-            try FixtureBridge.post(FixtureCommand(kind: "set_value", identifier: identifier, value: value))
-            Thread.sleep(forTimeInterval: 0.15)
+            guard identifier == "fixture-input" else {
+                settleVisualCursor(at: cursorTarget)
+                throw ComputerUseError.message(nonSettableSetValueErrorMessage)
+            }
+            do {
+                try applyVerifiedActionValue(value, validate: {}, write: {
+                    try FixtureBridge.post(FixtureCommand(kind: "set_value", identifier: identifier, value: value))
+                }, read: { try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == identifier })?.value })
+            } catch {
+                settleVisualCursor(at: cursorTarget)
+                throw error
+            }
             settleVisualCursor(at: cursorTarget)
             return try actionResult(for: query)
         }
@@ -1000,6 +1051,7 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("element \(elementIndex) has no backing accessibility object")
         }
 
+        try requireActionTarget(element, in: snapshot)
         guard try isSettableForSetValue(element: element, attribute: kAXValueAttribute) else {
             throw ComputerUseError.message(nonSettableSetValueErrorMessage)
         }
@@ -1008,13 +1060,18 @@ public final class ComputerUseService {
         moveVisualCursor(to: cursorTarget)
 
         do {
-            try requireUsableComputerUseSession()
-            let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFString)
-            guard result == .success else {
-                throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
-            }
-
-            pauseBeforeReadBack(0.1)
+            try applyVerifiedActionValue(value,
+                validate: { try requireActionTarget(element, in: snapshot) },
+                write: {
+                    let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFString)
+                    guard result == .success else {
+                        throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
+                    }
+                }, read: {
+                    var observed: CFTypeRef?
+                    guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &observed) == .success else { return nil }
+                    return observed
+                })
         } catch {
             settleVisualCursor(at: cursorTarget)
             throw error

@@ -44,3 +44,9 @@ The probe runs the same `StdioMCPServer`, tool dispatcher and `ComputerUseServic
 `doctor` reports both permissions and session context. Accessibility trust alone is insufficient: the library requires an unlocked console session whose audit ID matches the calling process. In the measured pane, Accessibility and Screen Capture are true, but the process and console audit IDs differ. A second shell started by the actual Herdr host has the same mismatch. The probe therefore fails before app discovery or input. No direct action timings or engine improvements have been established in this context.
 
 Run the probe from a terminal in the active desktop login, and require `sessionState=unlocked` before benchmarking. Signed development app acceptance remains a separate final gate.
+
+## Input verification
+
+Real `set_value` calls validate the captured app/window and read the actual value after the write, including when full action read-back is off. Scroll and drag require a change in cached accessibility values or window geometry; unreadable or unchanged state produces an explicit error. A successful visual-only drag can therefore return an unverified-effect error. Unsupported page-scroll actions fall back to a targeted wheel event, then undergo the same verification. Synthetic fixture paths also reject unverified effects.
+
+`act-fixture.mjs ignore-wheel` starts a fixture that drops wheel input. `act-fixture.mjs reject-values` starts a field whose AX setter ignores writes. Close the own fixture before changing modes. Use `OCU_CHECK_MODE=ignore-wheel` or `reject-values` with `act-bench.mjs ocu 1` for those probes. `OCU_CHECK_MODE=standard` adds non-settable-value, invalid-scroll-target and zero-distance-drag checks after a normal sequence. Expected errors have `verified=true`; they are not successful action timings.

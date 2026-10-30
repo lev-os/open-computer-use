@@ -4,6 +4,23 @@ import Foundation
 import OpenComputerUseKit
 
 @MainActor
+final class FixtureScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        guard !CommandLine.arguments.contains("--ignore-wheel") else { return }
+        super.scrollWheel(with: event)
+    }
+}
+
+@MainActor
+final class IgnoringFixtureInputField: NSTextField {
+    override func setAccessibilityValue(_ value: Any?) {
+        // Deliberately acknowledge AXValue writes without applying them.
+        // Normal fixture mode uses an unmodified NSTextField.
+        return
+    }
+}
+
+@MainActor
 final class KeyCaptureView: NSView {
     var onKey: ((String) -> Void)?
 
@@ -21,7 +38,7 @@ final class KeyCaptureView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         NSColor.systemTeal.setFill()
-        dirtyRect.fill()
+        bounds.intersection(dirtyRect).fill()
 
         let text = "Click here, then use press_key"
         let attributes: [NSAttributedString.Key: Any] = [
@@ -60,7 +77,7 @@ final class DragPadView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         NSColor.systemOrange.setFill()
-        dirtyRect.fill()
+        bounds.intersection(dirtyRect).fill()
 
         let text = "Drag inside this pad"
         let attributes: [NSAttributedString.Key: Any] = [
@@ -80,7 +97,8 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
     private var window: NSWindow!
     private let incrementButton = NSButton(title: "Increment Counter", target: nil, action: nil)
     private let counterLabel = NSTextField(labelWithString: "Counter: 0")
-    private let inputField = NSTextField(string: "seed")
+    private let inputField: NSTextField = CommandLine.arguments.contains("--reject-values")
+        ? IgnoringFixtureInputField(string: "seed") : NSTextField(string: "seed")
     private let keyLabel = NSTextField(labelWithString: "Last key: none")
     private let scrollLabel = NSTextField(labelWithString: "Scroll offset: 0")
     private let dragLabel = NSTextField(labelWithString: "Last drag: none")
@@ -138,6 +156,8 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         window.contentView = contentView
 
         let descriptionLabel = NSTextField(wrappingLabelWithString: "Fixture app for safe computer-use smoke tests.")
+        if CommandLine.arguments.contains("--ignore-wheel") { descriptionLabel.stringValue += " Scroll wheel input is ignored." }
+        if CommandLine.arguments.contains("--reject-values") { descriptionLabel.stringValue += " Accessibility value writes are ignored." }
         incrementButton.target = self
         incrementButton.action = #selector(handleIncrement)
         incrementButton.bezelStyle = .rounded
@@ -149,6 +169,7 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         inputField.setAccessibilityIdentifier("fixture-input")
 
         keyLabel.setAccessibilityIdentifier("fixture-key-label")
+        keyCaptureView.clipsToBounds = true
         keyCaptureView.setAccessibilityIdentifier("fixture-key-capture")
         keyCaptureView.onKey = { [weak self] value in
             self?.keyLabel.stringValue = "Last key: \(value)"
@@ -161,6 +182,7 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         scrollView.setAccessibilityIdentifier("fixture-scroll-view")
 
         dragLabel.setAccessibilityIdentifier("fixture-drag-status")
+        dragPadView.clipsToBounds = true
         dragPadView.setAccessibilityIdentifier("fixture-drag-pad")
         dragPadView.onDrag = { [weak self] value in
             self?.dragLabel.stringValue = "Last drag: \(value)"
@@ -265,7 +287,7 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         let clipView = NSClipView()
         clipView.postsBoundsChangedNotifications = true
 
-        let scrollView = NSScrollView()
+        let scrollView = FixtureScrollView()
         scrollView.drawsBackground = true
         scrollView.borderType = .bezelBorder
         scrollView.hasVerticalScroller = true
