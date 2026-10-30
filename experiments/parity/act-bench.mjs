@@ -71,13 +71,13 @@ try {
     var coordinateError = !width ? 'Cannot verify screenshot pixel scale; drag skipped' : null;
     var scale = width ? width / windowWidth : 1;
     function find(id) {
-      var line = state.split('\n').find(l => l.includes('ID: ' + id) || l.includes('Identifier: ' + id));
+      var line = state.split('\n').find(l => l.includes(id));
       var match = line?.match(/^\s*(\d+)\s/);
       if (!match) throw new Error('Fixture element missing: ' + id);
       return Number(match[1]);
     }
     function inputValue(text) {
-      var line = text.split('\n').find(l => l.includes('ID: fixture-input'));
+      var line = text.split('\n').find(l => l.includes('fixture-input'));
       return line ? (line.match(/Value: (.*?)(?:,? ID:| Frame:|$)/)?.[1]?.replace(/,$/, '').trim() || '') : undefined;
     }
     async function step(run, name, action) {
@@ -115,7 +115,7 @@ try {
       await step(i, 'typeText', () => a.typeText('parity-' + i));
       await step(i, 'setValue', () => a.setValue(find('fixture-input'), 'verified-' + i));
       await step(i, 'clickCounter', () => a.click(find('fixture-increment')));
-      await step(i, 'scroll', () => a.scroll(find('fixture-scroll-view'), i % 2 === 0 ? 'up' : 'down', 1));
+      await step(i, 'scroll', () => a.scroll(find('fixture-scroll-view'), Number(state.match(/Scroll offset: ([-\d]+)/)?.[1]) > 0 ? 'down' : 'up', 1));
       await step(i, 'drag', () => {
         if (coordinateError) throw new Error(coordinateError);
         return a.drag(points[0].map(v => v * scale), [(points[1][0] + i * 5) * scale, points[1][1] * scale]);
@@ -159,7 +159,7 @@ try {
     facade() {
       return {
         getAXState: () => this.call('get_app_state'),
-        getScreenshot: () => { if (!this.image) throw new Error('OCU returned no screenshot'); return Uint8Array.from(Buffer.from(this.image.data, 'base64')); },
+        getScreenshot: () => { if (process.env.ACT_BENCH_CAPTURE && this.image) fs.writeFileSync('.build/act-fixture-ocu.image', Buffer.from(this.image.data, 'base64')); if (!this.image) throw new Error('OCU returned no screenshot'); return Uint8Array.from(Buffer.from(this.image.data, 'base64')); },
         click: i => this.call('click', { element_index: String(i) }),
         pressKey: key => this.call('press_key', { key }),
         typeText: text => this.call('type_text', { text }),
@@ -174,7 +174,8 @@ try {
   let rows;
   if (engine === 'codex') {
     const cu = path.join(os.homedir(), '.agents/skills/tools/references/computer-use/scripts/cu.mjs');
-    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
+    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\n${process.env.ACT_BENCH_CAPTURE ? 'await shot(actFixture, "act-fixture-current");' : ''}\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
+    execFileSync('node', [cu, 'reset'], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 30000 });
     let output = execFileSync('node', [cu, 'js', code], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 180000, maxBuffer: 8 * 1024 * 1024 });
     const spilled = output.match(/full text in (\S+?\.txt)/);
     if (spilled) output = fs.readFileSync(spilled[1], 'utf8');

@@ -1292,6 +1292,25 @@ public final class ComputerUseService {
 
         switch button {
         case .left:
+            if clickCount == 1,
+               [kAXTextFieldRole as String, "AXTextArea", "AXTextView"].contains(stringValue(of: element, attribute: kAXRoleAttribute) ?? ""),
+               isSettable(element: element, attribute: kAXFocusedAttribute) {
+                try requireUsableComputerUseSession()
+                guard try setBoolAttribute(named: kAXFocusedAttribute, on: element) else {
+                    throw ComputerUseError.stateUnavailable("click could not focus the text entry element")
+                }
+                var pid: pid_t = 0
+                guard AXUIElementGetPid(element, &pid) == .success,
+                      waitUntil(timeout: 0.2, interval: 0.005, {
+                          var focused: CFTypeRef?
+                          guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+                                let focused else { return false }
+                          return CFEqual(focused, element)
+                      }) != nil else {
+                    throw ComputerUseError.stateUnavailable("click could not verify text entry focus")
+                }
+                return true
+            }
             if clickCount <= 1,
                !hasAncestorRole("AXWebArea", of: element),
                try selectContainingListItem(for: element)
@@ -1813,8 +1832,12 @@ public final class ComputerUseService {
         }
 
         let baseValue = editableBaseValue(for: element)
+        guard let replacement = actionTextReplacement(value: baseValue,
+                range: AccessibilityTextSelection.readRange(of: element), text: text) else {
+            return false // Let the app's keyboard path preserve its insertion/selection semantics.
+        }
         try requireUsableComputerUseSession()
-        let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, (baseValue + text) as CFString)
+        let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, replacement as CFString)
         switch result {
         case .success:
             return true
