@@ -32,3 +32,10 @@ The installed release failed to focus the input, subsequent typing returned an A
 `swift build` passes. The unmodified accepted Swift base has one failing test: `TextSelectionOperationTests.testQueryIndexesValidateSessionBeforeLookingUpTheApp` at line 65. The suite executes 399 tests, skips 10, and reports one failure. Node syntax and repository documentation checks pass.
 
 The action benchmark and preparation scripts were exercised against the checkout fixture. The lane remains blocked until stable development signing and permissions permit an optimized development build, bounded engine fixes, and post-fix acceptance. No runtime speedup, publication, or complete parity is claimed.
+
+### Direct probe continuation
+The operator authorized a plain Swift executable after an Accessibility trust check returned true. Added the optimized `OCUActionProbe` target, which reuses the production MCP server and tool service directly, with no app-agent proxy. Its doctor reports permissions and audit-session context. No production input, tree, permission or session-guard code is changed.
+
+Both Accessibility and Screen Capture are available to the probe, but its audit session differs from the active console session. The actual Herdr host shell has the same mismatch. The production session guard therefore rejects execution. The probe checks that prerequisite before discovery or input; it has no guard override. Temporary discovery experiments were removed. Direct action timing and engine fixes remain unverified; signed development app acceptance stays deferred.
+
+Direct-probe files: `Package.swift`, `experiments/parity/Sources/OCUActionProbe/main.swift`, `experiments/parity/README.md`, `docs/ARCHITECTURE.md`, and the existing action parity plan. Optimized and debug builds pass. The same single baseline test failure remains; direct session rejection is verified with exit code 1 and no input.

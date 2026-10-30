@@ -40,3 +40,13 @@ The explicit identity build timed out during signing after 60 seconds. The devel
 Installed-release baseline (three real-input fixture sequences): input click does not focus the field; subsequent typeText returns an AX error; drag returns without an observed effect. Counter clicks, scroll and setValue work in this fixture. No action engine source was changed because the development runtime cannot yet be tested. Full Swift build passes; baseline Swift tests have one failure in `TextSelectionOperationTests.testQueryIndexesValidateSessionBeforeLookingUpTheApp`.
 
 The lane report holds exact signing output, separate action/read timings, read-back-on/off comparison, raw artifact references and remaining gates. Shared workstream state is unchanged because this lane prohibits edits to the owning Leviathan checkout.
+
+## Direct probe continuation
+The operator authorized a terminal-owned Swift probe after `AXIsProcessTrusted()` returned true. Reuse `OpenComputerUseKit` through `StdioMCPServer`, without the app-agent proxy. Measure optimized probe baseline, then change one action behavior at a time and retain before/after measurements. Signed development app acceptance stays deferred; signing no longer blocks library work.
+
+Keep native input confined to the checkout fixture. Existing full-tree rendering remains owned by the read lane. Any bounded action observation must read cached targets only, without changing tree construction.
+
+### Direct probe result
+The optimized terminal probe compiles and both permission checks pass. Execution is blocked by a distinct audit-session mismatch. The library classifies this session as unavailable; the actual Herdr pane host has the same mismatch. Unprivileged session joining is denied. Session validation and Locked Use behavior remain unchanged. Temporary PID-discovery plumbing was removed because it could not solve this prerequisite and would add unverified production changes.
+
+The next executable frontier is a terminal in the active desktop audit session: require the probe doctor's session state to be unlocked, then collect its baseline and continue the bounded action changes. No signing work is required for that direct-tool route. No direct-tool latency table is claimed before execution is admitted.

@@ -22,6 +22,8 @@
   - 键鼠输入模拟
   - software cursor overlay
   - fixture test bridge
+- `experiments/parity`
+  Read/action benchmarks and the optional `OCUActionProbe` executable. The probe uses the production MCP server directly from a terminal process, preserves the session guard, and reports permissions and audit-session context. Direct-probe results do not establish signed-app acceptance.
 - `experiments/CursorMotion`
   独立的 Swift cursor motion lab，用于试验 `Bezier + arc + spring` 参数模型、调参 UI 和独立渲染，不直接耦合主 MCP runtime。
 - `experiments/StandaloneCursor`

@@ -27,3 +27,20 @@ The Codex path uses the installed `cu.mjs` skill session with `CU_ENGINE=codex`.
 ## Initial lane result
 
 Native OCU release 1.1.2 on the real fixture reproduced failed input focus, a subsequent typing error, and a drag call with no effect. Scroll and setValue worked in three samples. Development-runtime changes are blocked until the development bundle can be stably signed and granted permissions. See the lane's external report for raw artifact paths, exact measurements and signing diagnostics. No engine fix or parity improvement is claimed by these benchmark scripts.
+
+## Direct terminal probe
+
+```sh
+swift build -c release --product OCUActionProbe
+.build/release/OCUActionProbe doctor
+node experiments/parity/act-fixture.mjs
+OCU_BIN=.build/release/OCUActionProbe \
+  node experiments/parity/act-bench.mjs ocu 3 > .build/ocu-direct-actions.json
+node experiments/parity/act-fixture.mjs close
+```
+
+The probe runs the same `StdioMCPServer`, tool dispatcher and `ComputerUseService` without the app-agent proxy. Its main AppKit loop supports the existing cursor and capture paths. It does not enable Locked Use, replace session validation or alter macOS permissions. Label any resulting measurements as **direct terminal probe**, not signed-app measurements.
+
+`doctor` reports both permissions and session context. Accessibility trust alone is insufficient: the library requires an unlocked console session whose audit ID matches the calling process. In the measured pane, Accessibility and Screen Capture are true, but the process and console audit IDs differ. A second shell started by the actual Herdr host has the same mismatch. The probe therefore fails before app discovery or input. No direct action timings or engine improvements have been established in this context.
+
+Run the probe from a terminal in the active desktop login, and require `sessionState=unlocked` before benchmarking. Signed development app acceptance remains a separate final gate.

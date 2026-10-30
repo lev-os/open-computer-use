@@ -8,6 +8,7 @@ let package = Package(
         .macOS(.v14),
     ],
     products: [
+        .executable(name: "OCUActionProbe", targets: ["OCUActionProbe"]),
         .executable(name: "OCULockInstaller", targets: ["OCULockInstaller"]),
         .executable(name: "OCULockService", targets: ["OCULockService"]),
         .executable(name: "OCUGuardian", targets: ["OCUGuardian"]),
@@ -40,6 +41,11 @@ let package = Package(
         .package(url: "https://github.com/SDWebImage/libwebp-Xcode.git", exact: "1.6.0"),
     ],
     targets: [
+        .executableTarget(
+            name: "OCUActionProbe",
+            dependencies: ["OpenComputerUseKit"],
+            path: "experiments/parity/Sources/OCUActionProbe"
+        ),
         .target(
             name: "OpenComputerUseVirtualDisplayShim",
             path: "packages/OpenComputerUseVirtualDisplayShim",
