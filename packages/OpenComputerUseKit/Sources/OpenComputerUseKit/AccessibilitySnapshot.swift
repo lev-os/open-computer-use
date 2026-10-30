@@ -831,7 +831,7 @@ private struct RenderContext {
     let focusedElement: AXUIElement?
     let textLimit: SnapshotTextLimit
     let treeLimits: AccessibilityTreeLimits
-    var flattenInertContainers = false
+    var flattenInertContainers = true
 }
 
 // Runs the real renderer against a scoped, injected AX provider. The returned
@@ -953,6 +953,12 @@ private struct TreeRenderer {
             suppressChildren: hidesChildren
         )
 
+        // A nameless, stateless web hierarchy group adds no agent information.
+        // Keep any raw action, help, placeholder, subrole or focused target even
+        // when its displayed action list is empty.
+        let canFlattenHierarchy = context.flattenInertContainers
+            && subrole == nil && help == nil && placeholder == nil && actions.isEmpty
+            && !(context.focusedElement.map { CFEqual($0, root) } ?? false)
         if shouldElideNode(
             role: role,
             title: displayTitle,
@@ -963,7 +969,7 @@ private struct TreeRenderer {
             actions: prettyActions,
             childCount: childElements.count,
             genericTextSummary: genericTextSummary,
-            webAreaDepth: webAreaDepth,
+            webAreaDepth: canFlattenHierarchy ? nil : webAreaDepth,
             preservesCompactGenericActionTarget: rendersCompactGenericActionTarget
         ) {
             for child in childElements {

@@ -97,6 +97,20 @@ final class AXSemanticRenderingTests: XCTestCase {
         XCTAssertNotNil(fixture.index(2, in: output.records))
     }
 
+    func testOnlyInertHierarchyDisappearsAndNewIndexesTargetTheSameControls() {
+        let fixture = Fixture()
+        let before = fixture.render(flatten: false)
+        let after = fixture.render(flatten: true)
+        assertAgentTargets(fixture, before, expected: [0, 1, 3, 4])
+        assertAgentTargets(fixture, after, expected: [0, 1, 3, 4])
+        XCTAssertNotNil(fixture.index(2, in: before.records))
+        XCTAssertNil(fixture.index(2, in: after.records))
+        XCTAssertLessThan(after.lines.joined(separator: "\n").count, before.lines.joined(separator: "\n").count)
+        let newButtonIndex = fixture.index(3, in: after.records)!
+        XCTAssertTrue(CFEqual(after.records[newButtonIndex]!.element!, fixture.nodes[3]!.element))
+        XCTAssertEqual(after.records[newButtonIndex]!.rawActions, ["AXPress"])
+    }
+
     func testCandidatePolicyPreservesNamesValuesAndControlRoles() {
         let fixture = Fixture()
         for policy in [false, true] { assertAgentTargets(fixture, fixture.render(flatten: policy), expected: [0, 1, 3, 4]) }
