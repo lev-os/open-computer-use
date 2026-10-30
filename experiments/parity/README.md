@@ -21,3 +21,11 @@ The renderer batches commonly used attributes and caches successful/unsupported 
 Set `OCU_CODEX_SNAPSHOT` to capture the reference benchmark's last tree to a private file. Capture remains a read through `cu.mjs`; no reference binaries or internals are inspected.
 
 When the terminal audit session differs from the console, run `OCU_READ_RELAY=1 node experiments/parity/bench.mjs ocu-direct Discord 5`. This uses the operator-provided desktop relay and forwards only the cache diagnostic flag. Verify `node /tmp/ocu-gui-relay/run.mjs -- .build/release/OCUReadBench doctor --json` with an absolute binary path; `sessionState` must be `unlocked`. Pane-local historical figures are provisional. The signed app remains a separate acceptance gate.
+
+## Optional diffs
+
+`app.getAXState({ diff: true })` returns JSON. Its first packet is `ax-full` with `revision` and complete `text`. Later `ax-diff` packets contain `baseRevision`, `revision`, and `added` / `changed` element entries (`index`, full line `text`) plus removed indexes. A changed `layout` records the exact order of numeric element references and non-element metadata lines. Indentation, focus, selection and notes are retained. `applyAXStateDiff` in `scripts/node-repl/ax-state-diff.mjs` reconstructs the exact full text and rejects revision gaps. Full text stays the default; `disableDiffing: true` forces it and resets the diff baseline.
+
+Each app binding has its own baseline. Window/header or observation-option changes, native errors, duplicate IDs and screenshot reads reset it. Request a new full baseline after a missed packet. Diffing reduces returned text; the native tree is still read in full, so it does not remove AX traversal time.
+
+`OCU_PARITY_OUTPUT=<private-directory> node experiments/parity/diff-bench.mjs` captures three direct relay snapshots per allowed app and verifies exact reconstruction through the same codec. It performs no actions. Live replay and controlled app-API tests are separate from signed-app acceptance.
