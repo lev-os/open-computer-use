@@ -831,6 +831,17 @@ private struct RenderContext {
     let focusedElement: AXUIElement?
     let textLimit: SnapshotTextLimit
     let treeLimits: AccessibilityTreeLimits
+    var flattenInertContainers = false
+}
+
+// Runs the real renderer against a scoped, injected AX provider. The returned
+// records let semantic fixtures verify the actual numeric action lookup targets.
+func renderAXSemanticFixture(root: AXUIElement, focused: AXUIElement? = nil,
+                             flattenInertContainers: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
+    var renderer = TreeRenderer(context: RenderContext(windowBounds: .zero, focusedElement: focused,
+        textLimit: .max, treeLimits: .defaults, flattenInertContainers: flattenInertContainers))
+    renderer.render(root)
+    return (renderer.lines, renderer.records)
 }
 
 private struct TreeRenderer {

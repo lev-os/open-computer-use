@@ -21,17 +21,27 @@ final class AXSnapshotReadCache: NSObject {
     private var settable: [ElementKey: [String: Bool]] = [:]
     let batch: (AXUIElement) -> [String: Attribute]
     let single: (AXUIElement, String) -> (AXError, CFTypeRef?)
+    let readActions: (AXUIElement) -> (AXError, [String]?)
+    let readSettable: (AXUIElement, String) -> (AXError, Bool)
 
     init(batch: @escaping (AXUIElement) -> [String: Attribute] = readBatch,
-         single: @escaping (AXUIElement, String) -> (AXError, CFTypeRef?) = readSingle) {
+         single: @escaping (AXUIElement, String) -> (AXError, CFTypeRef?) = readSingle,
+         actions: @escaping (AXUIElement) -> (AXError, [String]?) = readActionNames,
+         settable: @escaping (AXUIElement, String) -> (AXError, Bool) = readIsSettable) {
         self.batch = batch; self.single = single
+        self.readActions = actions; self.readSettable = settable
     }
 
     static func withSnapshot<T>(_ body: () throws -> T) rethrows -> T {
+        let cache = ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE"] == "1"
+            ? nil : AXSnapshotReadCache()
+        return try withCache(cache, body)
+    }
+
+    static func withCache<T>(_ cache: AXSnapshotReadCache?, _ body: () throws -> T) rethrows -> T {
         let dictionary = Thread.current.threadDictionary
         let previous = dictionary[key]
-        dictionary[key] = ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE"] == "1"
-            ? nil : AXSnapshotReadCache()
+        dictionary[key] = cache
         defer { dictionary[key] = previous }
         return try body()
     }
@@ -49,20 +59,30 @@ final class AXSnapshotReadCache: NSObject {
     func actionNames(_ element: AXUIElement) -> [String]? {
         let key = ElementKey(element: element)
         if let cached = actions[key] { return cached }
-        var raw: CFArray?
-        let error = AXReadStatistics.measure("actions") { AXUIElementCopyActionNames(element, &raw) }
-        if error == .success { let names = raw as? [String] ?? []; actions[key] = names; return names }
+        let (error, raw) = readActions(element)
+        if error == .success { let names = raw ?? []; actions[key] = names; return names }
         return nil
     }
 
     func isSettable(_ element: AXUIElement, _ name: String) -> Bool {
         let key = ElementKey(element: element)
         if let cached = settable[key]?[name] { return cached }
-        var flag = DarwinBoolean(false)
-        let error = AXReadStatistics.measure("settable") { AXUIElementIsAttributeSettable(element, name as CFString, &flag) }
-        let result = error == .success && flag.boolValue
+        let (error, flag) = readSettable(element, name)
+        let result = error == .success && flag
         if error == .success || error == .attributeUnsupported { settable[key, default: [:]][name] = result }
         return result
+    }
+
+    private static func readActionNames(_ element: AXUIElement) -> (AXError, [String]?) {
+        var raw: CFArray?
+        let error = AXReadStatistics.measure("actions") { AXUIElementCopyActionNames(element, &raw) }
+        return (error, raw as? [String])
+    }
+
+    private static func readIsSettable(_ element: AXUIElement, _ name: String) -> (AXError, Bool) {
+        var flag = DarwinBoolean(false)
+        let error = AXReadStatistics.measure("settable") { AXUIElementIsAttributeSettable(element, name as CFString, &flag) }
+        return (error, flag.boolValue)
     }
 
     private static let names = [

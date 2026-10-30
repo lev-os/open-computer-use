@@ -73,3 +73,7 @@ A representative final Discord read took 499.93 ms: 403.06 ms in AX calls and 96
 - 2026-10-30: Keep diffs off by default. They reduce returned text while the native tree still receives a full read.
 - 2026-10-30: Keep the dev bundle ID with release optimization. Explicit dev builds preserve neighboring release bundles and do not automatically embed Locked Use components.
 - 2026-10-30: Do not modify Leviathan state: this lane explicitly forbids it. The external report records reconciliation and exact remaining signing steps.
+
+## Full-size continuation
+
+The operator confirmed Discord speed independently and requested that the full-size gate now be closed. Before pruning, synthetic AX fixtures run the production renderer with injected attributes, action names and settable state. Their independent logical IDs verify control roles, names, values and the backing elements/actions of numeric indexes. Boundaries include named, described, valued, identified, selected, expanded, disabled, settable, actionable, subrole, placeholder, help and focused groups. Repeated control names remain distinct targets. The first candidate will flatten only otherwise empty web hierarchy containers; all semantic boundaries stay.
