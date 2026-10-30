@@ -97,3 +97,13 @@ test("app API keeps full text by default, scopes diffs and resets after errors",
   await assert.rejects(app.getAXState({ diff: "yes" }), /boolean/);
   assert.ok(calls.every(call => !("diff" in call.arguments) && !("disableDiffing" in call.arguments)));
 });
+
+
+test("compact mixed indentation still produces indexed element changes", () => {
+  const diff = new AXStateDiff();
+  diff.observe(tree(" 1 group\n\t 2 button Play"));
+  const packet = JSON.parse(diff.observe(tree(" 1 group\n\t 2 button Pause\n\t 3 text new")));
+  assert.deepEqual(packet.changed.map(x => x.index), [2]);
+  assert.deepEqual(packet.added.map(x => x.index), [3]);
+  assert.equal(packet.changed[0].text, "\t 2 button Pause");
+});

@@ -3,7 +3,7 @@ function partition(text) {
   const elements = new Map(), layout = [], header = [];
   let foundElement = false;
   for (const line of text.split("\n")) {
-    const match = /^\t*(0|[1-9]\d*)(?=\s|$)/u.exec(line);
+    const match = /^[\t ]*(0|[1-9]\d*)(?=\s|$)/u.exec(line);
     if (!match) {
       layout.push(line);
       if (!foundElement) header.push(line);

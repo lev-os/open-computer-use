@@ -49,7 +49,7 @@ final class AXSemanticRenderingTests: XCTestCase {
         func node(_ element: AXUIElement) -> Node {
             nodes.values.first { CFEqual($0.element, element) }!
         }
-        func render(flatten: Bool = false, focused: Int? = nil) -> (lines: [String], records: [Int: ElementRecord]) {
+        func render(flatten: Bool = false, focused: Int? = nil, compact: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
             let cache = AXSnapshotReadCache(batch: { element in
                 let node = self.node(element)
                 var values = node.attributes.mapValues { AXSnapshotReadCache.Attribute.value($0) }
@@ -62,7 +62,7 @@ final class AXSemanticRenderingTests: XCTestCase {
             })
             return AXSnapshotReadCache.withCache(cache) {
                 renderAXSemanticFixture(root: nodes[0]!.element, focused: focused.flatMap { nodes[$0]?.element },
-                                        flattenInertContainers: flatten)
+                                        flattenInertContainers: flatten, compactText: compact)
             }
         }
         func index(_ logicalID: Int, in records: [Int: ElementRecord]) -> Int? {
@@ -113,7 +113,9 @@ final class AXSemanticRenderingTests: XCTestCase {
 
     func testCandidatePolicyPreservesNamesValuesAndControlRoles() {
         let fixture = Fixture()
-        for policy in [false, true] { assertAgentTargets(fixture, fixture.render(flatten: policy), expected: [0, 1, 3, 4]) }
+        for policy in [false, true] {
+            for compact in [false, true] { assertAgentTargets(fixture, fixture.render(flatten: policy, compact: compact), expected: [0, 1, 3, 4]) }
+        }
     }
 
     func testSemanticGroupsAndActionTargetsAreNeverStructuralNoise() {
@@ -135,9 +137,100 @@ final class AXSemanticRenderingTests: XCTestCase {
         ]
         for (name, configure, focus) in cases {
             let fixture = Fixture(); configure(fixture.nodes[2]!)
-            let output = fixture.render(flatten: true, focused: focus)
+            let output = fixture.render(flatten: true, focused: focus, compact: true)
             assertAgentTargets(fixture, output, expected: [0, 1, 2, 3, 4])
             XCTAssertNotNil(fixture.index(2, in: output.records), name)
+            let text = output.lines.joined(separator: "\n")
+            for attribute in ["AXTitle", "AXDescription", "AXHelp", "AXIdentifier", "AXValue", "AXPlaceholderValue"] {
+                if let value = fixture.nodes[2]!.attributes[attribute] as? String, !value.isEmpty {
+                    XCTAssertTrue(text.contains(value), "Lost \(attribute) in \(name)")
+                }
+            }
+            if ["selected", "expanded", "disabled"].contains(name) { XCTAssertTrue(text.contains(name), name) }
+        }
+    }
+
+    func testScalarValuesAndLiteralFormatLikeTextRemainVisible() {
+        let fixture = Fixture()
+        let toggle = fixture.add(5, role: "AXCheckBox", title: "Enabled")
+        toggle.attributes["AXValue"] = kCFBooleanFalse
+        toggle.actions = ["AXPress"]; toggle.settable = true
+        let slider = fixture.add(6, role: "AXSlider", title: "Volume")
+        slider.attributes["AXValue"] = NSNumber(value: 0.75)
+        slider.actions = ["AXIncrement", "AXDecrement"]; slider.settable = true
+        let code = fixture.add(7, role: "AXTextField", title: "Numeric code")
+        code.attributes["AXValue"] = "0042" as CFString; code.settable = true
+        let literal = fixture.add(8, role: "AXTextField", title: "Literal (w:str)")
+        literal.attributes["AXValue"] = "a = b (settable, string)" as CFString; literal.settable = true
+        fixture.nodes[2]!.children.append(contentsOf: [5, 6, 7, 8])
+        for policy in [false, true] {
+            let output = fixture.render(flatten: policy, compact: true)
+            assertAgentTargets(fixture, output, expected: [0, 1, 3, 4, 5, 6, 7, 8])
+            let text = output.lines.joined(separator: "\n")
+            for value in ["off", "0.75", "0042", "Literal (w:str)", "a = b (settable, string)"] {
+                XCTAssertTrue(text.contains(value), value)
+            }
+        }
+    }
+
+    func testCompactFormattingKeepsEveryRecordAndItsHierarchy() {
+        let fixture = Fixture()
+        fixture.nodes[1]!.children = [10]
+        for id in 10..<30 {
+            let layer = fixture.add(id, role: "AXGroup", title: "Layer \(id)")
+            layer.children = id == 29 ? [2] : [id + 1]
+        }
+        let before = fixture.render(flatten: true, compact: false)
+        let after = fixture.render(flatten: true, compact: true)
+        assertAgentTargets(fixture, after, expected: [0, 1, 3, 4])
+        XCTAssertEqual(Set(before.records.keys), Set(after.records.keys))
+        func depths(_ lines: [String], compact: Bool) -> [Int] {
+            lines.map { line in
+                var depth = 0
+                for char in line.prefix(while: { $0 == " " || $0 == "\t" }) {
+                    depth = char == "\t" ? (compact ? (depth / 4 + 1) * 4 : depth + 1) : depth + 1
+                }
+                return depth
+            }
+        }
+        XCTAssertEqual(depths(before.lines, compact: false), depths(after.lines, compact: true))
+        let buttonIndex = fixture.index(3, in: after.records)!
+        let linePosition = after.lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("\(buttonIndex) ") }!
+        XCTAssertEqual(depths(after.lines, compact: true)[linePosition], 22)
+        for index in before.records.keys {
+            let old = before.records[index]!, new = after.records[index]!
+            XCTAssertTrue(CFEqual(old.element!, new.element!))
+            XCTAssertEqual(old.role, new.role)
+            XCTAssertEqual(old.rawActions, new.rawActions)
+            XCTAssertEqual(old.localFrame, new.localFrame)
+            XCTAssertEqual(old.isSyntheticText, new.isSyntheticText)
+        }
+    }
+
+    func testCompactTraitNotationRetainsEveryStateAndNativeType() {
+        for mask in 0..<8 {
+            let states = ["selected", "expanded", "disabled"].enumerated().compactMap { mask & (1 << $0.offset) != 0 ? $0.element : nil }
+            for type in [nil, "string", "boolean", "float"] as [String?] {
+                let raw = states + ["settable"] + (type.map { [$0] } ?? [])
+                let compact = AXTreeTextFormatting.traitTokens(raw, compact: true)
+                let decoded = compact.flatMap { token -> [String] in
+                    switch token {
+                    case "w": return ["settable"]
+                    case "w:str": return ["settable", "string"]
+                    case "w:bool": return ["settable", "boolean"]
+                    case "w:float": return ["settable", "float"]
+                    default: return [token]
+                    }
+                }
+                XCTAssertEqual(decoded, raw)
+            }
+        }
+        XCTAssertEqual(AXTreeTextFormatting.valueSegment(" Value: a = b (w:str)", compact: true), " = a = b (w:str)")
+        for depth in 0...64 {
+            let prefix = AXTreeTextFormatting.indentation(depth, compact: true)
+            var columns = 0
+            for char in prefix { columns = char == "\t" ? (columns / 4 + 1) * 4 : columns + 1 }
+            XCTAssertEqual(columns, depth)
         }
     }
 

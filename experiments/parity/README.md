@@ -33,3 +33,11 @@ Each app binding has its own baseline. Window/header or observation-option chang
 ## Optimized development app
 
 `OPEN_COMPUTER_USE_DEV_APP=1 ./scripts/build-open-computer-use-app.sh release` keeps `com.ifuryst.opencomputeruse.dev`, the Dev name and variant while using release optimization. An explicit dev build preserves neighboring release/legacy bundles. Use an isolated output directory for lane work. A build with `OPEN_COMPUTER_USE_CODESIGN_MODE=none` is an unsigned packaging check only; do not grant it permissions or count it as signed-app acceptance.
+
+## Compact full-tree text
+
+The real AX renderer retains all nodes and backend records while using compact text. `[tab=4 w=settable]` defines four-column tab stops and the write flag. `w:str`, `w:bool` and `w:float` retain the original native type; other state flags remain literal. `group` is the canonical container role, and `=` introduces a value. Names, values, identifiers, help, placeholders, actions and frames remain intact. The App/Window preamble and official native tool description stay unchanged. Synthetic bridge snapshots keep their existing text.
+
+Semantic AX fixtures run the production renderer with independent logical targets. They verify all record indexes and backing AX elements, control roles, values, raw actions, frames, deep hierarchy, and readable metadata under legacy and compact formatting. The read-only raw diagnostic found ubiquitous context-menu/scroll actions and writable empty groups, so those targets stay. The byte reduction comes from formatting rather than discarding them.
+
+Set `OCU_SWIFT_LOG_DIR` when invoking `verify-swift.mjs` through a relay with bounded stdout. It saves complete build/test logs privately and emits a short summary. This avoids treating clipped test output as a complete test record.
