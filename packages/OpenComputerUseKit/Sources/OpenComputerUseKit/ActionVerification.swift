@@ -183,3 +183,21 @@ func appendingObservedActionChange(to result: ToolCallResult, name: String,
     content.insert(.text("Verified \(name) changes: " + changed.prefix(8).joined(separator: "; ")), at: index)
     return ToolCallResult(content: content, isError: result.isError)
 }
+
+/// A later unsupported AX page must not repeat pages already applied.
+func performActionScrollPages(_ count: Int, settle: TimeInterval = 0.05,
+                              validate: () throws -> Void, page: () -> AXError,
+                              fallback: (Double) throws -> Void) throws {
+    for completed in 0..<count {
+        try validate()
+        let result = page()
+        if result != .success {
+            guard [.attributeUnsupported, .actionUnsupported].contains(result) else {
+                throw ComputerUseError.stateUnavailable("scroll accessibility action failed with \(result.rawValue)")
+            }
+            try fallback(Double(count - completed))
+            return
+        }
+        if settle > 0 { Thread.sleep(forTimeInterval: settle) }
+    }
+}

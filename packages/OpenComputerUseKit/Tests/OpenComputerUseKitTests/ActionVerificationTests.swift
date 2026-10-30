@@ -2,6 +2,21 @@ import XCTest
 @testable import OpenComputerUseKit
 
 final class ActionVerificationTests: XCTestCase {
+    func testPartialPageFallbackUsesOnlyRemainingBudget() throws {
+        var attempts = 0
+        var remaining = 0.0
+        try performActionScrollPages(5, settle: 0, validate: {}, page: {
+            attempts += 1
+            return attempts <= 3 ? .success : .actionUnsupported
+        }, fallback: { remaining = $0 })
+        XCTAssertEqual(attempts, 4)
+        XCTAssertEqual(remaining, 2)
+    }
+    func testFatalPageFailureDoesNotSendWheelInput() {
+        var sent = false
+        XCTAssertThrowsError(try performActionScrollPages(5, settle: 0, validate: {}, page: { .invalidUIElement }, fallback: { _ in sent = true }))
+        XCTAssertFalse(sent)
+    }
     func testDefaultStateReadBackIsBoundedAndFullIsExplicit() {
         XCTAssertTrue(actionReadBackEnabled(environment: [:]))
         XCTAssertFalse(fullActionReadBackEnabled(environment: [:]))

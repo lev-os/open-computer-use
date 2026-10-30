@@ -887,20 +887,16 @@ public final class ComputerUseService {
         if let repeatCount = integralScrollPageCount(pages),
            let rawAction = record.rawActions.first(where: { $0.caseInsensitiveCompare("AXScroll\(normalized.capitalized)ByPage") == .orderedSame }),
            let element = record.element {
-            for _ in 0..<repeatCount {
-                try requireUsableComputerUseSession()
-                let result = AXUIElementPerformAction(element, rawAction as CFString)
-                if result != .success {
-                    guard [.attributeUnsupported, .actionUnsupported].contains(result),
-                          let point = try globalPoint(for: record, snapshot: snapshot) else {
-                        throw ComputerUseError.stateUnavailable("scroll accessibility action failed with \(result.rawValue)")
+            try performActionScrollPages(repeatCount,
+                validate: { try requireActionTarget(element, in: snapshot) },
+                page: { AXUIElementPerformAction(element, rawAction as CFString) },
+                fallback: { remaining in
+                    guard let point = try globalPoint(for: record, snapshot: snapshot) else {
+                        throw ComputerUseError.stateUnavailable("scroll fallback has no target frame")
                     }
-                    try performScrollEvent(at: point, direction: normalized, pages: pages,
+                    try performScrollEvent(at: point, direction: normalized, pages: remaining,
                         targetDescription: "element_index=\(elementIndex)", snapshot: snapshot)
-                    break
-                }
-                Thread.sleep(forTimeInterval: 0.05)
-            }
+                })
         } else if let point = try globalPoint(for: record, snapshot: snapshot) {
             try performScrollEvent(
                 at: point,
