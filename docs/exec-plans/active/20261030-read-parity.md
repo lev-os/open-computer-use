@@ -2,84 +2,75 @@
 
 ## Goal
 
-Read full accessibility trees within 1.5 times the reference engine, with no larger text and no loss of agent information. Add optional diff output. The direct-tool lane is locally verified; full-size parity and signed-app acceptance remain open.
+Read full accessibility trees within 1.5 times the reference engine, with no larger text and no loss of agent information. The direct-tool gates now pass. Signed native app/adapter acceptance remains pending with the operator.
 
 ## Scope
 
-- Snapshot rendering, scoped attribute caching, optional JS diffs, benchmark tools and dev packaging.
-- Read existing Discord and Brave windows only. Preserve production session guards and action records. No installed runtime replacement, permission changes or publication.
+- Read rendering, scoped AX caching, optional diffs, semantic fixtures, benchmark tools and dev packaging.
+- Read existing Discord and Brave windows only. Preserve session guards and action records. No installed runtime replacement, permission changes or publication.
 
 ## Current vs Ideal
 
-The original installed Discord median was 3116 ms versus 641 ms in the first paired baseline. An instrumented pane-local direct baseline then made 68351 attribute reads for 928 elements; those pane-local timings are provisional because the audit session differs from the console.
+Final optimized direct-tool reads use the operator's desktop relay. Each time is the median of three five-read medians. Every individual pair passes the latency and full-size limits, with matching AX root window titles.
 
-Final results use the guarded, optimized direct tool through the operator's desktop relay. Each cell below is the median of three five-read medians. All three individual paired ratios are within 1.5.
+| App | Direct ms | Reference ms | Direct chars | Reference chars |
+| --- | ---: | ---: | ---: | ---: |
+| Discord | 429.85 | 430 | 37710 | 39561 |
+| Brave | 79.12 | 99 | 10475 | 10629 |
 
-| App | Direct ms | Reference ms | Ratio | Direct chars | Reference chars |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Discord | 499.93 | 479 | 1.044 | 46029 | 39563 |
-| Brave | 104.41 | 121 | 0.863 | 12606 | 10340 |
-
-Latency passes in this direct-tool scope. Full text remains 16.34 percent larger on Discord and 21.91 percent larger on Brave. Optional unchanged diff packets contain 85 characters. Signed native app/adapter acceptance is pending.
+The full-size gap is closed: 1851 fewer characters on Discord and 154 fewer on Brave in these paired windows. The final reads retain all 928 Discord and 223 Brave records. The browser changed between earlier captures; its earlier 222/233 counts are historical states, not pruning results.
 
 ## What top experts in accessibility performance would do
 
-Start from live AX calls, exact tree text and transport frames. Count and time remote calls before changing the renderer. Compare cache-on/off output byte for byte, then compare paired reads of the same window. Use original text as the reconstruction oracle for diffs, including revision gaps, reordered nodes, focus and selection.
+Start from AX calls and their metadata, exact output and transport evidence. Measure before changing code, then test against independent semantic targets. Keep every action record while checking names, values, state, type, hierarchy and target identity. Distinguish direct-tool evidence from signed-app acceptance.
 
-Further full-size changes need semantic fixtures for the extra containers and anonymous action targets. Current output retains 77 anonymous target frames on Discord. The full-size gate remains unmet; the measured result is retained under the brief's best-result stop rule.
+The raw AX capture found ubiquitous context-menu/scroll actions and writable empty groups. The first inert-group candidate produced zero live size gain. It was retired: final production node selection matches the pre-size-change policy. Formatting provides the size savings.
 
 ## Standards and boundaries
 
-- `docs/REPO_COLLAB_GUIDE.md` and `docs/design-docs/core-beliefs.md`: small working commits, repeatable checks and synchronized documentation.
-- `docs/ARCHITECTURE.md`: keep app permission identity, session validation and numeric action lookup intact.
-- `docs/HISTORY_GUIDE.md` and `docs/QUALITY_SCORE.md`: retain sanitized change history and distinguish fixture, direct runtime and signed-app proof.
-- `docs/PLANS_GUIDE.md`: keep this plan active while the acceptance gates below remain open. The existing workshop-intake workstream stays authoritative and read-only for this lane.
+- `docs/REPO_COLLAB_GUIDE.md` and `docs/design-docs/core-beliefs.md`: scoped working commits, repeatable checks and synchronized docs.
+- `docs/ARCHITECTURE.md`: preserve session validation, permission identity and numeric action lookup.
+- `docs/HISTORY_GUIDE.md`, `docs/QUALITY_SCORE.md` and `docs/PLANS_GUIDE.md`: sanitized history, distinct acceptance layers and an active plan for the remaining signed-app gate.
+- Workshop-intake remains authoritative and read-only for this lane. Its state is not edited because the brief forbids Leviathan writes.
 
 ## Implementation
 
-1. Added experimental `OCUReadBench` SPI that uses the production TreeRenderer, validates the GUI session and AX trust, and reads an existing window without activation or capture.
-2. Batched common attributes and cached supported/unsupported values, actions and settable checks for one renderer walk. Transient errors fall back; rewalks get fresh storage. Cache-on/off full text matched byte for byte on both apps.
-3. Removed frame text only when another semantic field identifies the target. Anonymous geometry and every backend ElementRecord frame remain.
-4. Added opt-in revisioned `getAXState` diffs, package dependency closure and `OPEN_COMPUTER_USE_DEV_APP=1` for optimized dev-identity bundles. Full output remains default.
+1. Batch common AX attributes and retain their cache only for a renderer walk. Transient errors can fall back; rewalks and new reads have fresh values.
+2. Keep every original node while packing indentation with four-column tab stops, using the canonical group role, reversible writable/type flags and an equals value delimiter. The format legend is separate; official preamble lines and native tool descriptions stay unchanged.
+3. Keep optional revisioned diffs off by default. The codec recognizes mixed indentation and preserves exact lines, layout, focus, selection and notes.
+4. Match the direct probe to production record lifetime and renderer cache scope. Save the optional snapshot only after the final timed sample. Five timed reads and zero added warmup are unchanged.
+
+## Semantic proof
+
+Synthetic AX fixtures feed the production renderer through scoped read providers. An independent logical-node oracle checks controls and all numeric record targets. Coverage includes 14 metadata/action/focus boundaries, repeated names, 20 nested groups, exact hierarchy, boolean/float/leading-zero values and literal format-like text. Legacy and compact outputs keep identical record keys, backing elements, raw roles/actions, frames and synthetic-record flags. Retaining handles does not retain old values across reads.
 
 ## Verification
 
-- Three final paired five-read runs per app and engine completed through `experiments/parity/bench.mjs`. Exact AX root window titles match for every pair. Reference display headers trim browser branding.
-- `swift build` and `swift test` passed in the desktop relay: 403 tests, 8 skipped, zero failures. The earlier pane-only selection test failure disappears in the correct session; action code was not changed.
-- All 55 Node tests passed. Two packaged adapter layouts imported successfully. Diff tests cover 200 changing snapshots; six real relay snapshots reconstructed exactly.
-- Optimized dev packaging passed with the dev identifier and variant. It was deliberately unsigned and was not used for signed-app acceptance. Shell syntax and diff checks passed.
+- Three paired five-read runs per app and engine pass both direct-tool targets. All record indexes are valid and every paired AX root title matches.
+- `swift build` and all 412 Swift tests pass through the desktop relay, with 8 skipped. All 56 Node tests pass.
+- Six latest compact live snapshots reconstruct exactly through the diff codec. Unchanged packets contain 85 characters.
+- Complete build/test logs are saved privately to avoid relay stdout clipping. Intermediate failed compatibility checks were fixed by preserving the original contract; existing goldens were not weakened.
 
 ## Timing limits
 
-A representative final Discord read took 499.93 ms: 403.06 ms in AX calls and 96.87 ms in other work. Brave took 104.41 ms: 88.46 ms in AX calls and 15.96 ms in other work. Tree time includes AX time; line formatting can also contain AX reads. Direct reads have no app-agent IPC or capture. Process startup and final report JSON encoding are outside the read timer. The external lane report preserves every sample and the earlier installed-release profile.
+Mixed-load samples remain in the external report. Host load and artifact I/O varied across those runs, so their deltas are not assigned to formatting alone. The qualified results above come after the probe-fidelity corrections. Direct reads exclude app-agent IPC and image capture; startup/report encoding and final artifact writing are outside timed reads. AX and tree timers overlap as labeled in the report.
 
 ## Progress
 
-- [x] Measure before optimization and retain raw, private evidence outside the checkout.
-- [x] Make and locally commit working read-cache, frame and diff changes.
-- [x] Complete direct relay benchmarks, reconstruction checks, Swift and Node checks.
-- [ ] Meet the full-size target with semantic-equivalence evidence.
-- [ ] Verify the signed dev app and rerun native app/adapter acceptance.
+- [x] Measure and profile before optimization.
+- [x] Verify semantic fixtures before considering pruning.
+- [x] Close both full-size targets while preserving original node selection.
+- [x] Confirm three paired runs, semantic records, diffs, Swift and Node checks; commit all local work.
+- [ ] Sign the optimized dev app and verify native app/adapter acceptance.
 
 ## Remaining acceptance
 
-1. Resolve Developer ID private-key access, sign the optimized dev bundle, and verify the dev code identifier, team identifier and bound Info.plist before any permission request.
-2. Verify Accessibility and Screen Recording for that exact signed app; run three paired native app/adapter benchmarks per app through the desktop relay.
-3. Map and verify further full-tree simplification if full-size parity remains required. No new node-pruning claim is accepted here.
+1. Resolve Developer ID private-key access. Sign the prepared optimized dev bundle and verify its dev identifier, team and bound Info.plist before any permission request.
+2. Verify Accessibility and Screen Recording for that exact signed app, then repeat native app/adapter acceptance through the desktop relay.
 
 ## Decisions
 
-- 2026-10-30: The operator authorized direct-tool measurements and then supplied the desktop relay. The probe now uses the production session validator; it refuses in the pane and reports unlocked in console audit 130147.
-- 2026-10-30: Keep diffs off by default. They reduce returned text while the native tree still receives a full read.
-- 2026-10-30: Keep the dev bundle ID with release optimization. Explicit dev builds preserve neighboring release bundles and do not automatically embed Locked Use components.
-- 2026-10-30: Do not modify Leviathan state: this lane explicitly forbids it. The external report records reconciliation and exact remaining signing steps.
-
-## Full-size continuation
-
-The operator confirmed Discord speed independently and requested that the full-size gate now be closed. Before pruning, synthetic AX fixtures run the production renderer with injected attributes, action names and settable state. Their independent logical IDs verify control roles, names, values and the backing elements/actions of numeric indexes. Boundaries include named, described, valued, identified, selected, expanded, disabled, settable, actionable, subrole, placeholder, help and focused groups. Repeated control names remain distinct targets. The first candidate will flatten only otherwise empty web hierarchy containers; all semantic boundaries stay.
-
-## Full-size candidate verified
-
-Compact text now preserves the original node-selection policy and every backend record. The zero-live-gain pruning prototype was retired. Semantic tests retain structural groups too. Four-column tab stops preserve exact depth; `group`, reversible writable/type annotations and `=` reduce repeated syntax while retaining names and values. The official App/Window preamble and native tool descriptions remain unchanged.
-
-The direct probe now keeps the previous record map until replacement and uses renderer-only attribute caching, matching production lifetime/scope. Optional snapshot capture writes once after the final timed sample. Five timed reads and zero additional warmup remain unchanged. The latest paired check is Discord 373.68 ms versus 435 ms, 37710 versus 39561 characters; Brave 88.87 ms versus 96 ms, 10762 versus 10816 characters. The browser UI now exposes 233 records rather than the earlier 222; each measured current record is retained.
+- 2026-10-30: The probe uses the production GUI-session validator and refuses pane-local GUI reads. Final measurements run in the operator's desktop relay.
+- 2026-10-30: Keep original node selection. Compact only the printed representation and preserve all state/type information with an explicit legend.
+- 2026-10-30: Keep diffs off by default; they reduce output while AX still receives a full read.
+- 2026-10-30: Keep the dev bundle ID in optimized builds; preserve neighboring bundles and skip automatic Locked Use embedding for dev variants.

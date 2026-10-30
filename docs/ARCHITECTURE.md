@@ -64,6 +64,7 @@
 - `ComputerUseService` 负责把 Computer Use tool 请求映射到本地能力，`ComputerUseToolDispatcher` 则把 native tool 的参数解析与 service 方法分发收敛成 MCP server 和 `open-computer-use call` 共用的一层。
 - Codex plugin 的 `.mcp.json` 默认不再把 native tools 直接暴露给模型，而是启动 `scripts/node-repl/open-computer-use-repl.mjs`。adapter 以 child MCP client 连接同一个 native runtime，并只对外列出 `js` / `js_reset`；JavaScript 通过异步 app-bound API（`cua.getApp(...)`、`app.click(...)`、`app.getAXState()` 等）调用 native tools。
 - macOS AX renderer 会批量读取常用属性，并只在一次 tree walk 内缓存属性、action names 和 settable 状态；重读和 lazy-web rewalk 会建立新缓存，动作读取不进入此缓存。具名 action target 可省略重复 frame 文本，但后台 element record 仍保留几何数据。性能证据与 signed app 验收边界见 [read benchmark](../experiments/parity/README.md)。
+- macOS 完整树文本保持原节点选择与 element record，使用四列 tab stop、`group`、`w:str` / `w:bool` / `w:float` 和 `=` 压缩重复格式；独立 legend 解释编码，原 App/Window 前缀与 native tool descriptions 不变。semantic AX fixtures 验证角色、名称、值、层级和每个动作编号背后的元素保持一致。
 - `getAXState({ diff: true })` 可选返回带 revision 的 JSON 增量；默认仍返回完整文本。增量保留元素编号、行顺序、缩进、焦点、选区和提示，基线缺失、窗口或选项变化时回到完整快照。原生 AX 仍完整读取；增量只减少 JS 返回文本。具体协议和验证见 [read benchmark](../experiments/parity/README.md)。
 - REPL 使用 Node.js 自带的 evaluator，因此保留 top-level `await` 和跨调用 lexical bindings；真正执行代码的 kernel 位于 Worker 中，超时会终止 Worker 并重建干净 session，避免 `while (true)` 挂死 MCP transport。
 - npm launcher 还直接提供 `ocu js` 和 `ocu repl`：前者为一次性 Worker/native MCP session，后者在当前终端内保留同一个 session 和 binding；两者退出后都会关闭 Worker 与 native MCP child。`ocu capabilities [--json]` 在不启动 native MCP 的情况下报告 Node、adapter、kernel 和当前平台 native artifact 是否齐全。help 始终显示 code-first 命令并标记 availability，不按环境动态隐藏接口。

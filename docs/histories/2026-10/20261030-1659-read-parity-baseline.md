@@ -3,28 +3,30 @@
 ### 🤖 Execution Context
 * **Agent ID**: Codex read lane
 * **Base Model**: GPT-6 family; exact model not exposed
-* **Runtime**: Codex on macOS; final GUI checks use the operator's desktop-session relay
+* **Runtime**: Codex on macOS; GUI reads/checks use the operator's desktop-session relay
 
 ### 📥 User Query
-> Execute the read parity lane. Measure first, preserve information and valid action indexes, add optional diff output, keep local commits and report each step. Continue through a direct Swift tool and desktop relay while signed-app acceptance waits for the operator.
+> Execute the read parity lane. Measure first, retain roles/names/values and valid action indexes, add optional diffs and close the full-tree size gap. Verify semantic fixtures before pruning, benchmark/test and commit each step. Signed-app acceptance waits for the operator.
 
 ### 🛠 Changes Overview
-**Scope:** macOS read rendering, JS read output, development packaging and verification tools.
+**Scope:** Read rendering, output protocol, dev packaging and local verification.
 
 **Key Actions:**
-- **Read cache**: Batch AX attributes and keep values, action names and settable checks within one renderer walk. Preserve transient fallback, fresh rewalks, session guards and backend element records. Cache-on/off full text matched byte for byte.
-- **Output**: Omit redundant named-target geometry and add optional revisioned diffs. Full text remains default. Six real snapshots and 200 changing test snapshots reconstructed exactly; unchanged diff packets contain 85 characters.
-- **Packaging**: Include the codec in both adapter layouts and the plugin installer; reject missing adapter dependencies. Optimized builds can retain the dev identity. Dev builds preserve neighboring release bundles and skip automatic Locked Use embedding.
-- **Verification**: Final direct relay median-of-medians: Discord 499.93 ms versus 479 ms; Brave 104.41 ms versus 121 ms. All three pairs meet the latency gate. Swift build and 403 Swift tests passed (8 skipped); all 55 Node tests and package-copy imports passed.
+- **Read cache**: Batch common AX attributes within a renderer walk, with transient fallback and fresh later reads. Session guards and action lookup remain intact.
+- **Full text**: Preserve the original node-selection policy. Compact only indentation, canonical group labels, reversible writable/type flags and the value delimiter. A separate legend defines the format. The zero-live-gain pruning experiment was retired.
+- **Proof and tooling**: Add semantic AX fixtures with independent logical targets, deep hierarchy, metadata boundaries, repeated names, scalar/literal values and handle freshness. Align direct-probe lifetime/cache scope with production and save optional artifacts only after the final timed sample. Preserve the original preamble and official native tool descriptions.
+- **Diffs and packaging**: Add optional revisioned, lossless state diffs; keep full text default. Include required dependencies in both package layouts and installer copies. Optimized app builds retain dev identity and preserve neighboring release bundles.
 
 ### 🧠 Design Intent (Why)
 
-Remote AX round trips dominated the baseline, so reduce repeated reads before changing which nodes appear. Keep cache lifetime separate from action reads. Use exact reconstruction and revision-gap rejection to prevent silent diff data loss.
+AX waits dominated the original read cost. Batching reduces remote calls. Raw metadata then showed that apparently empty groups still expose actions or writable values, so the final size change keeps all original nodes and action records. Compact formatting retains all names, values, states, types, hierarchy and indexes.
 
-Full text remains larger: 46029 versus 39563 characters on Discord, and 12606 versus 10340 on Brave. The full-size gate is unmet. Direct-tool results do not establish signed-app acceptance. Initial Developer ID signing waited on a private-key operation and did not finish; no permission request or installed-runtime replacement followed.
+Final direct relay median-of-medians: Discord 429.85 ms versus 430 ms, 37710 versus 39561 characters; Brave 79.12 ms versus 99 ms, 10475 versus 10629 characters. All three pairs per app pass latency and size. Current direct reads retain 928/223 records. All 412 Swift tests pass (8 skipped), as do all 56 Node tests. Six real compact snapshots reconstruct exactly through the diff codec; unchanged packets contain 85 characters.
+
+Intermediate load-sensitive timing samples and all before/after steps remain in the private lane report. These results do not establish signed-app acceptance. Developer ID signing previously waited on a private-key operation; optimized candidate packaging is deliberately unsigned. No permission grant, installed-runtime replacement, push or publication occurred.
 
 ### 📁 Files Modified
-- `packages/OpenComputerUseKit/Sources/OpenComputerUseKit/AccessibilitySnapshot.swift` and `AXSnapshotReadCache.swift`
-- `scripts/node-repl/ax-state-diff.mjs`, `open-computer-use-repl.mjs`, CLI checks and tests
-- `experiments/parity/` and `docs/exec-plans/active/20261030-read-parity.md`
-- `scripts/build-open-computer-use-app.sh`, `scripts/npm/build-packages.mjs`, `scripts/install-codex-plugin.sh` and architecture documentation
+- `packages/OpenComputerUseKit/Sources/OpenComputerUseKit/AccessibilitySnapshot.swift`, `AXSnapshotReadCache.swift` and `AXTreeTextFormatting.swift`
+- `packages/OpenComputerUseKit/Tests/OpenComputerUseKitTests/AXSemanticRenderingTests.swift` and cache tests
+- `scripts/node-repl/`, `experiments/parity/`, architecture docs and the active read parity plan
+- `scripts/build-open-computer-use-app.sh`, `scripts/npm/build-packages.mjs` and `scripts/install-codex-plugin.sh`
