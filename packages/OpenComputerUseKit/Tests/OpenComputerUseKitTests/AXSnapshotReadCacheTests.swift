@@ -48,4 +48,11 @@ final class AXSnapshotReadCacheTests: XCTestCase {
         })
         XCTAssertTrue(AXSnapshotReadCache.current === outer)
     }
+    func testOnlyAnonymousActionTargetsNeedRenderedFrames() {
+        XCTAssertTrue(shouldRenderActionTargetFrame(title: nil, label: nil, value: nil, summary: nil, placeholder: nil))
+        XCTAssertFalse(shouldRenderActionTargetFrame(title: "Play", label: nil, value: nil, summary: nil, placeholder: nil))
+        XCTAssertFalse(shouldRenderActionTargetFrame(title: nil, label: nil, value: nil, summary: "Open details", placeholder: nil))
+        XCTAssertFalse(shouldRenderActionTargetFrame(title: nil, label: nil, value: "off", summary: nil, placeholder: nil))
+    }
+
 }

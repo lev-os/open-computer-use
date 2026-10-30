@@ -1,4 +1,5 @@
 import Foundation
+import ApplicationServices
 @_spi(ReadBenchmark) import OpenComputerUseKit
 
 struct Read: Encodable {
@@ -22,6 +23,13 @@ struct Report: Encodable {
 do {
     setenv("OPEN_COMPUTER_USE_DEBUG_TIMING", "1", 0)
     let args = Array(CommandLine.arguments.dropFirst())
+    if args == ["doctor", "--json"] {
+        let session = LockedUseSession.current()
+        let diagnostic: [String: Any] = ["sessionState": session.state.rawValue,
+            "accessibilityTrusted": AXIsProcessTrusted(), "auditSessionID": session.auditSessionID as Any? ?? NSNull()]
+        print(String(decoding: try JSONSerialization.data(withJSONObject: diagnostic, options: [.sortedKeys]), as: UTF8.self))
+        exit(0)
+    }
     guard args.count >= 3, let pid = Int32(args[0]), pid > 0 else {
         throw NSError(domain: "OCUReadBench", code: 2, userInfo: [NSLocalizedDescriptionKey:
             "usage: OCUReadBench <pid> <app-name> <bundle-id> [reads=5] [last-snapshot-file]"])

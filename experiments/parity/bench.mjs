@@ -49,8 +49,15 @@ try {
     if (pids.length !== 1) throw new Error(`expected one running ${app} process`);
     const args = [pids[0], app, bundle, String(reads)];
     if (process.env.OCU_READ_SNAPSHOT) args.push(process.env.OCU_READ_SNAPSHOT);
-    out = execFileSync(process.env.OCU_READ_BIN || ".build/release/OCUReadBench", args,
-      { encoding: "utf8", env: process.env, timeout: 180000 });
+    const binary = path.resolve(process.env.OCU_READ_BIN || ".build/release/OCUReadBench");
+    const relayArgs = ["/tmp/ocu-gui-relay/run.mjs", "--cwd", process.cwd(), "--timeout", "180000"];
+    if (process.env.OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE !== undefined) {
+      relayArgs.push("--env", `OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE=${process.env.OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE}`);
+    }
+    relayArgs.push("--", binary, ...args);
+    out = process.env.OCU_READ_RELAY === "1"
+      ? execFileSync("node", relayArgs, { encoding: "utf8", timeout: 190000 })
+      : execFileSync(binary, args, { encoding: "utf8", env: process.env, timeout: 180000 });
   } else {
     const f = path.join(os.tmpdir(), `ocu-parity-${process.pid}.mjs`);
     fs.writeFileSync(f, code);
@@ -69,7 +76,7 @@ if (engine === "codex" && process.env.OCU_CODEX_SNAPSHOT) {
 }
 if (engine === "ocu-direct") {
   const result = JSON.parse(out);
-  console.log(JSON.stringify({ ...result, evidence: "direct AX tool; signed dev app acceptance pending" }));
+  console.log(JSON.stringify({ ...result, evidence: process.env.OCU_READ_RELAY === "1" ? "direct AX tool through desktop relay; signed dev app acceptance pending" : "pane-local direct AX tool; provisional" }));
   process.exit(0);
 }
 const m = out.match(/BENCH (\[\[.*?\]\])/s);
