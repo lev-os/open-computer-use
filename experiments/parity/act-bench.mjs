@@ -124,6 +124,15 @@ try {
       await step(0, 'rejectDragEndpoints', () => a.drag(request.start, request.end));
       return rows;
     }
+    if (checkMode === 'key-profile') {
+      await step(0, 'click', () => a.click(find('fixture-input')));
+      // Same exact reset/key/read sequence on both engines, ten keys per run.
+      for (var i = 0; i < count * 10; i++) {
+        await step(i, 'clearValue', () => a.setValue(find('fixture-input'), ''));
+        await step(i, 'pressKey', () => a.pressKey('x'));
+      }
+      return rows;
+    }
     if (checkMode === 'chain') {
       var input = find('fixture-input');
       await step(0, 'chainText', async () => {
@@ -176,7 +185,7 @@ try {
       else nativeEnv.OPEN_COMPUTER_USE_ACTION_READ_BACK = process.env.OCU_ACTION_READ_BACK;
       this.child = spawn(process.env.OCU_BIN || 'ocu', ['mcp'], { stdio: ['pipe', 'pipe', 'pipe'], env: nativeEnv });
       this.stderr = '';
-      this.child.stderr.on('data', d => { this.stderr = (this.stderr + d).slice(-4000); });
+      this.child.stderr.on('data', d => { this.stderr = (this.stderr + d).slice(-131072); });
       const fail = e => { for (const p of this.pending.values()) { clearTimeout(p.timer); p.reject(e); } this.pending.clear(); };
       this.child.on('error', fail);
       this.child.on('exit', code => fail(new Error(`OCU exited ${code}: ${this.stderr}`)));

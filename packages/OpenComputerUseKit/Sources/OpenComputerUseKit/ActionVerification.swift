@@ -17,13 +17,13 @@ func applyVerifiedActionValue(_ requested: String, timeout: TimeInterval = 0.2,
     let started = TimingLog.now()
     var polls = 0
     defer { TimingLog.log("action.verify_value.polls.\(polls)", since: started) }
-    try validate()
-    try write()
+    try TimingLog.measure("action.verify_value.before", validate)
+    try TimingLog.measure("action.verify_value.write", write)
     let deadline = ProcessInfo.processInfo.systemUptime + timeout
     repeat {
         polls += 1
-        try validate()
-        if actionValueMatches(read(), requested: requested) { return }
+        try TimingLog.measure("action.verify_value.after", validate)
+        if actionValueMatches(TimingLog.measure("action.verify_value.read", read), requested: requested) { return }
         if ProcessInfo.processInfo.systemUptime >= deadline { break }
         Thread.sleep(forTimeInterval: 0.005)
     } while true

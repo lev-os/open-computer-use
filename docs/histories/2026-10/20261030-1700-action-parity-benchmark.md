@@ -73,3 +73,12 @@ Native macOS drag now requires a fresh completed endpoint receipt tied to the ca
 Three separate optimized product sessions verified all nine drags. Session medians were 851, 824 and 814 ms. The endpoint validator tests cover mismatched down/drag/up, missing mouse-up, stale sequences, malformed geometry and read failure. Swift build and 412 tests pass, with 8 skipped. Raw benchmark artifacts are saved directly before the relay returns, because large relay stdout writes can be truncated.
 
 The hostile integration case shifts the final drag receipt by 12 points while preserving mouse-down and mouse-up. The product rejects it with `drag endpoints mismatch` in 819 ms. All six Node parser/geometry tests pass.
+
+### Follow-up: measure printable-key latency
+Added opt-in value-verification stage timings and a shared thirty-key reset/key/read profile. Both engines verify 30/30 keys. Baseline OCU measures 9 ms median, Codex 5 ms, with cold first samples of 55 and 54 ms retained. OCU event posting takes 0.3 ms median, while focus/window/session revalidation takes 3.65 ms and the complete verification block takes 6.65 ms. Separate stage medians are not additive.
+
+The 1 ms polling trial measured 14 ms median with wider AX/full-read delays. It did not establish an improvement and was reverted. The original 5 ms poll, 200 ms timeout and all correctness checks remain. The trace and both rejected and retained benchmark series stay in the external lane evidence.
+
+Final retained release: all nine drags pass across three separate sessions at session medians 922, 861 and 960 ms. All other actions also verify 9/9. Key session medians are 44, 12 and 36 ms; the aggregate median is 36 ms against Codex 23 ms. The explicit 10 ms bar remains unmet. Full reads are timed separately. Final Swift build/test passes with 412 tests, 8 skipped and no failures. The task ends partial with measured limits rather than an unsupported latency claim.
+
+The final hostile endpoint receipt is also rejected with action read-back disabled. The isolated fixture is closed after verification.
