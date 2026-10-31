@@ -80,3 +80,7 @@ Mixed-load samples remain in the external report. Host load and artifact I/O var
 The operator requested proof through the built product and an upstream-indentation comparison. A fresh product baseline measured 535 ms on Discord with implicit capture/default text limit; explicit AX-only/full text measured 480 ms versus probe 472.74 ms and reference 459 ms. The native executable had shared cached TreeRenderer code; a separately packaged app-agent and the selected bare binary are different execution artifacts.
 
 The probe now uses the complete production SnapshotBuilder. The JS AX getter requests full text without unused capture by default, retains an explicit capture override, and removes only the known observation-omission note. Native combined-tool defaults remain compatible. Full checks pass (412 Swift, 57 Node). A new real product/Worker/MCP pair measured Discord 629 ms versus reference 488 ms, and Brave 88 ms versus 97 ms, with identical product/probe tree sizes. More paired runs will qualify the final state.
+
+## Upstream indentation result
+
+Both modes are available through `OPEN_COMPUTER_USE_AX_INDENTATION=level|tab4`. All other compactions remain active. Actual product level mode: Discord 44801 versus reference 39563 chars; Brave 11345 versus10629. Packed mode: 37712/10475 chars. The product and probe text matched exactly per mode, and normalized captured text matched across modes with only indentation/legend removed. Therefore retain tab4 as default and make level explicit. Full checks pass: 413 Swift tests (8 skipped), 57 Node tests.

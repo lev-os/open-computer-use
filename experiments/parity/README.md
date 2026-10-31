@@ -49,3 +49,9 @@ The direct benchmark retains the previous snapshot's element handles until the n
 `OCU_BIN="$PWD/.build/release/OpenComputerUse" node experiments/parity/bench.mjs ocu Discord 5` uses the repository's actual `ocu js` launcher, Worker API and native MCP process. Run that node script through the desktop relay when the pane is outside the console session. The test runner disables app-agent forwarding so the selected binary is measured rather than a separately packaged agent; signed app-agent acceptance remains separate.
 
 The probe now calls the same production SnapshotBuilder with read-only recovery, full text and AX-only observation. JS `getAXState()` defaults to the same full-text AX-only observation. Explicit `includeScreenshot: true` restores capture; use that or `getAXStateAndScreenshot()` before screenshot-coordinate actions. The native `get_app_state` combined observation and its 500-character default remain unchanged for compatibility. The AX getter removes only the exact separate screenshot-omission note; all UI text and other warnings remain.
+
+## Indentation choice
+
+`OPEN_COMPUTER_USE_AX_INDENTATION=level` selects one tab per tree level while retaining the other compact spellings. Its legend is `[w=settable]`. `tab4` selects four-column tab-stop packing with `[tab=4 w=settable]`. The default remains `tab4`: the measured product level-mode trees were 44801/11345 characters versus reference 39563/10629, while tab4 produced 37712/10475. Unknown values use the default. Set the variable on the product process; app-agent requests forward this prefixed variable as well.
+
+Semantic fixtures verify that these modes differ only in indentation and legend, with identical role/name/value text and numeric action records. Captured real product/probe trees also matched exactly in both modes.

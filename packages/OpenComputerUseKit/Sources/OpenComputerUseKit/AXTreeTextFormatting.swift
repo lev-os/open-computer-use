@@ -2,11 +2,24 @@ import Foundation
 
 /// Compact text retains all nodes and fields. Only their spelling and whitespace
 /// change; action records and the predicates that choose nodes use the raw data.
-enum AXTreeTextFormatting {
-    static let legend = "[tab=4 w=settable]"
+enum AXTreeIndentationStyle: String {
+    case level
+    case tab4
 
-    static func indentation(_ depth: Int, compact: Bool) -> String {
-        guard compact else { return String(repeating: "\t", count: depth) }
+    static var current: Self {
+        Self(rawValue: ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_AX_INDENTATION"] ?? "") ?? .tab4
+    }
+}
+
+enum AXTreeTextFormatting {
+    static var legend: String { legend(for: .current) }
+
+    static func legend(for style: AXTreeIndentationStyle) -> String {
+        style == .level ? "[w=settable]" : "[tab=4 w=settable]"
+    }
+
+    static func indentation(_ depth: Int, compact: Bool, style: AXTreeIndentationStyle = .tab4) -> String {
+        guard compact && style == .tab4 else { return String(repeating: "\t", count: depth) }
         return String(repeating: "\t", count: depth / 4) + String(repeating: " ", count: depth % 4)
     }
 

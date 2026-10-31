@@ -51,8 +51,8 @@ try {
     if (process.env.OCU_READ_SNAPSHOT) args.push(process.env.OCU_READ_SNAPSHOT);
     const binary = path.resolve(process.env.OCU_READ_BIN || ".build/release/OCUReadBench");
     const relayArgs = ["/tmp/ocu-gui-relay/run.mjs", "--cwd", process.cwd(), "--timeout", "180000"];
-    if (process.env.OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE !== undefined) {
-      relayArgs.push("--env", `OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE=${process.env.OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE}`);
+    for (const name of ["OPEN_COMPUTER_USE_DISABLE_AX_READ_CACHE", "OPEN_COMPUTER_USE_AX_INDENTATION"]) {
+      if (process.env[name] !== undefined) relayArgs.push("--env", `${name}=${process.env[name]}`);
     }
     relayArgs.push("--", binary, ...args);
     out = process.env.OCU_READ_RELAY === "1"

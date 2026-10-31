@@ -149,6 +149,7 @@ public struct AppSnapshot {
     let elements: [Int: ElementRecord]
     var screenshotNote: String? = nil
     var observation: SnapshotObservationOptions = .defaults
+    var treeIndentationStyle: AXTreeIndentationStyle = .current
 
     public var renderedText: String {
         renderedText(style: .fullState)
@@ -161,7 +162,7 @@ public struct AppSnapshot {
 
         lines.append("App=\(appReference) (pid \(app.pid))")
         lines.append("Window: \(quoted(displayTitle)), App: \(app.name).")
-        if observation.includeAX && mode == .accessibility { lines.append(AXTreeTextFormatting.legend) }
+        if observation.includeAX && mode == .accessibility { lines.append(AXTreeTextFormatting.legend(for: treeIndentationStyle)) }
         lines.append(contentsOf: treeLines)
         if !observation.includeAX {
             lines.append(SnapshotObservationOptions.accessibilityOmittedNote)
@@ -833,14 +834,15 @@ private struct RenderContext {
     let textLimit: SnapshotTextLimit
     let treeLimits: AccessibilityTreeLimits
     var compactText = true
+    var indentationStyle: AXTreeIndentationStyle = .current
 }
 
 // Runs the real renderer against a scoped, injected AX provider. The returned
 // records let semantic fixtures verify the actual numeric action lookup targets.
 func renderAXSemanticFixture(root: AXUIElement, focused: AXUIElement? = nil,
-                             compactText: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
+                             compactText: Bool = false, indentationStyle: AXTreeIndentationStyle = .tab4) -> (lines: [String], records: [Int: ElementRecord]) {
     var renderer = TreeRenderer(context: RenderContext(windowBounds: .zero, focusedElement: focused,
-        textLimit: .max, treeLimits: .defaults, compactText: compactText))
+        textLimit: .max, treeLimits: .defaults, compactText: compactText, indentationStyle: indentationStyle))
     renderer.render(root)
     return (renderer.lines, renderer.records)
 }
@@ -1022,7 +1024,7 @@ private struct TreeRenderer {
         let linePrefix = renderedRoleText.isEmpty ? "\(index)" : "\(index) \(renderedRoleText)"
 
         let lineBody = "\(linePrefix)\(traitsSegment)\(titleSegment)\(rowSummarySegment)\(labelSegment)\(helpSegment)\(urlSegment)\(identifierSegment)\(valueSegment)\(placeholderSegment)\(frameSegment)"
-        lines.append("\(AXTreeTextFormatting.indentation(depth, compact: context.compactText))\(lineBody)\(actionsSegment)")
+        lines.append("\(AXTreeTextFormatting.indentation(depth, compact: context.compactText, style: context.indentationStyle))\(lineBody)\(actionsSegment)")
 
         if TimingLog.enabled { AXReadStatistics.current?.textMilliseconds += (TimingLog.now() - lineStart) * 1000 }
 
@@ -1077,7 +1079,7 @@ private struct TreeRenderer {
 
         let index = nextIndex
         nextIndex += 1
-        lines.append("\(AXTreeTextFormatting.indentation(depth, compact: context.compactText))\(index) text \(text)")
+        lines.append("\(AXTreeTextFormatting.indentation(depth, compact: context.compactText, style: context.indentationStyle))\(index) text \(text)")
 
         records[index] = ElementRecord(
             index: index,

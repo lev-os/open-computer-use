@@ -49,7 +49,7 @@ final class AXSemanticRenderingTests: XCTestCase {
         func node(_ element: AXUIElement) -> Node {
             nodes.values.first { CFEqual($0.element, element) }!
         }
-        func render(focused: Int? = nil, compact: Bool = false) -> (lines: [String], records: [Int: ElementRecord]) {
+        func render(focused: Int? = nil, compact: Bool = false, indentation: AXTreeIndentationStyle = .tab4) -> (lines: [String], records: [Int: ElementRecord]) {
             let cache = AXSnapshotReadCache(batch: { element in
                 let node = self.node(element)
                 var values = node.attributes.mapValues { AXSnapshotReadCache.Attribute.value($0) }
@@ -62,7 +62,7 @@ final class AXSemanticRenderingTests: XCTestCase {
             })
             return AXSnapshotReadCache.withCache(cache) {
                 renderAXSemanticFixture(root: nodes[0]!.element, focused: focused.flatMap { nodes[$0]?.element },
-                                        compactText: compact)
+                                        compactText: compact, indentationStyle: indentation)
             }
         }
         func index(_ logicalID: Int, in records: [Int: ElementRecord]) -> Int? {
@@ -233,6 +233,28 @@ final class AXSemanticRenderingTests: XCTestCase {
             for char in prefix { columns = char == "\t" ? (columns / 4 + 1) * 4 : columns + 1 }
             XCTAssertEqual(columns, depth)
         }
+    }
+
+    func testOneTabModeKeepsAllOtherCompactionsAndActionRecords() {
+        let fixture = Fixture()
+        let packed = fixture.render(compact: true, indentation: .tab4)
+        let level = fixture.render(compact: true, indentation: .level)
+        assertAgentTargets(fixture, packed, expected: [0, 1, 2, 3, 4])
+        assertAgentTargets(fixture, level, expected: [0, 1, 2, 3, 4])
+        XCTAssertEqual(packed.lines.map { $0.trimmingCharacters(in: .whitespaces) },
+                       level.lines.map { $0.trimmingCharacters(in: .whitespaces) })
+        XCTAssertEqual(Set(packed.records.keys), Set(level.records.keys))
+        for index in packed.records.keys {
+            XCTAssertTrue(CFEqual(packed.records[index]!.element!, level.records[index]!.element!))
+            XCTAssertEqual(packed.records[index]!.role, level.records[index]!.role)
+            XCTAssertEqual(packed.records[index]!.rawActions, level.records[index]!.rawActions)
+        }
+        for depth in 0...64 {
+            XCTAssertEqual(AXTreeTextFormatting.indentation(depth, compact: true, style: .level), String(repeating: "\t", count: depth))
+        }
+        XCTAssertEqual(AXTreeTextFormatting.legend(for: .level), "[w=settable]")
+        XCTAssertEqual(AXTreeTextFormatting.legend(for: .tab4), "[tab=4 w=settable]")
+        XCTAssertNil(AXTreeIndentationStyle(rawValue: "invalid"))
     }
 
     func testRetainedElementHandlesDoNotRetainOldValuesAcrossReads() {
