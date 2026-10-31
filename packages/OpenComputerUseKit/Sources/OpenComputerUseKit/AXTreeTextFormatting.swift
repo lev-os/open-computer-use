@@ -6,8 +6,10 @@ enum AXTreeIndentationStyle: String {
     case level
     case tab4
 
+    /// One tab per level is the default: in the format test (experiments/parity/format-eval) both Claude
+    /// and Codex answered every question right with it (tab4 missed 7 of 156), at about the same input tokens.
     static var current: Self {
-        Self(rawValue: ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_AX_INDENTATION"] ?? "") ?? .tab4
+        Self(rawValue: ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_AX_INDENTATION"] ?? "") ?? .level
     }
 }
 

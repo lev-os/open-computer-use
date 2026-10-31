@@ -1,66 +1,66 @@
 # Tree format comprehension results
 
-Status: partial. Codex completed all six measured cells. Claude Opus 5.5 returned its weekly-limit refusal both before and after its stated local reset. Its accuracy and token cells are unmeasured. No alternate model, provider or account was used.
+Status: complete for one pass per cell. Both models answered the same 39 questions per window and format. Claude's six cells ran on 2026-10-30 with `--retry-provider=claude` on the saved captures, after its weekly limit cleared.
 
-Product source: `004854ee077e19990700e6417e0acb20a14ca142`. The native format and default are unchanged. The optional action-lane fixture was not running.
+Product source of the captures: `004854ee077e19990700e6417e0acb20a14ca142`. Decision: the default indentation is now `level` (one tab per tree level). `OPEN_COMPUTER_USE_AX_INDENTATION=tab4` keeps the packed format.
 
-## Current vs Ideal
+## Results
 
-Two same-window captures were evaluated with 39 identical questions per window and format-specific program-generated answers. Codex used `gpt-6.1-sol` at `low` effort, with tools disabled and no tool calls or configuration warnings in the accepted runs. The required second model is still unavailable.
+Codex used `gpt-6.1-sol` at `low` effort. Claude used `claude-opus-5-5` at low effort. Both ran with tools disabled.
 
-| Model | Window | Format | Exact answers | Input tokens | Cached input |
-| --- | --- | --- | ---: | ---: | ---: |
-| gpt-6.1-sol | discord | tab4 | 39/39 | 25409 | 7552 |
-| gpt-6.1-sol | discord | level | 39/39 | 25407 | 7552 |
-| gpt-6.1-sol | discord | codex | 38/39 | 23471 | 7552 |
-| Claude Opus 5.5 | discord | tab4 | unmeasured | — | — |
-| Claude Opus 5.5 | discord | level | unmeasured | — | — |
-| Claude Opus 5.5 | discord | codex | unmeasured | — | — |
-| gpt-6.1-sol | brave | tab4 | 36/39 | 15805 | 7552 |
-| gpt-6.1-sol | brave | level | 39/39 | 15816 | 7552 |
-| gpt-6.1-sol | brave | codex | 39/39 | 15409 | 7552 |
-| Claude Opus 5.5 | brave | tab4 | unmeasured | — | — |
-| Claude Opus 5.5 | brave | level | unmeasured | — | — |
-| Claude Opus 5.5 | brave | codex | unmeasured | — | — |
+| Model | Window | Format | Exact answers | Input tokens |
+| --- | --- | --- | ---: | ---: |
+| gpt-6.1-sol | discord | tab4 | 39/39 | 25409 |
+| gpt-6.1-sol | discord | level | 39/39 | 25407 |
+| gpt-6.1-sol | discord | codex | 38/39 | 23471 |
+| gpt-6.1-sol | brave | tab4 | 36/39 | 15805 |
+| gpt-6.1-sol | brave | level | 39/39 | 15816 |
+| gpt-6.1-sol | brave | codex | 39/39 | 15409 |
+| Claude Opus 5.5 | discord | tab4 | 39/39 | 19494 |
+| Claude Opus 5.5 | discord | level | 39/39 | 18746 |
+| Claude Opus 5.5 | discord | codex | 39/39 | 16507 |
+| Claude Opus 5.5 | brave | tab4 | 35/39 | 7234 |
+| Claude Opus 5.5 | brave | level | 39/39 | 7052 |
+| Claude Opus 5.5 | brave | codex | 35/39 | 6578 |
 
-Input tokens are CLI-reported total input, including cached tokens and CLI instructions. These are not tree-only token counts. Compare formats within a model.
+Input tokens are CLI-reported total input, including cached tokens and CLI instructions. They are not tree-only counts. Compare formats within one model.
 
-| Codex aggregate format | Exact answers | Accuracy | Total input tokens |
-| --- | ---: | ---: | ---: |
-| tab4 | 75/78 | 96.15% | 41214 |
-| level | 78/78 | 100.00% | 41223 |
-| codex | 77/78 | 98.72% | 38880 |
+| Model | Format | Exact answers | Total input tokens |
+| --- | --- | ---: | ---: |
+| gpt-6.1-sol | tab4 | 75/78 | 41214 |
+| gpt-6.1-sol | level | 78/78 | 41223 |
+| gpt-6.1-sol | codex | 77/78 | 38880 |
+| Claude Opus 5.5 | tab4 | 74/78 | 26728 |
+| Claude Opus 5.5 | level | 78/78 | 25798 |
+| Claude Opus 5.5 | codex | 74/78 | 23085 |
 
 ## Incorrect answers
 
-- **discord, codex, q37:** For the deepest (break ties by first text occurrence) node with role "group/container": What is its nesting depth, with a root at depth 0? Expected `12`; received `11`.
-- **brave, tab4, q05:** For the node with exact role "button" and exact name "Back": Is it marked settable? Expected `true`; received `false`.
-- **brave, tab4, q12:** For the node with exact role "button" and exact name "Forward": Is it marked settable? Expected `true`; received `false`.
-- **brave, tab4, q26:** For the first node with role "text field": Is it marked settable? Expected `true`; received `false`.
+Codex:
 
-Level had no wrong answers in this run. Claude produced no answers to score.
+- **discord, codex, q37:** depth of the deepest group. Expected `12`; received `11`.
+- **brave, tab4, q05, q12, q26:** "Is it marked settable?" for Back, Forward and the first text field. Expected `true`; received `false`.
 
-## Size and recommendation
+Claude:
 
-| Window | Compact characters | Level characters | Codex characters |
+- **brave, tab4, q29, q31, q32, q33:** children, last child, subtree size and the element after the subtree of the first group. Claude counted 4 children where there is 1, so all four structure answers were wrong.
+- **brave, codex, q29, q31, q32, q33:** the same four structure questions, the same mistake.
+
+Level had no wrong answers for either model.
+
+## Size and decision
+
+| Window | tab4 characters | level characters | codex characters |
 | --- | ---: | ---: | ---: |
 | discord | 39409 | 46762 | 41493 |
 | brave | 11809 | 12997 | 11904 |
 
-Recommend **switching the default to level**, provisionally, because it scored 78/78 while compact scored 75/78. The three compact errors were writable-state interpretations, not parent or element-number errors. Compact saved 15.72% of Discord characters and 9.14% of Brave characters against level, but only 9 input tokens in aggregate (41,214 versus 41,223, about 0.02%). It used more input tokens than Codex format despite fewer characters. Character size alone does not establish a token benefit.
+Level is the default because it was the only format both models read without error (156/156; tab4 149/156). The tab4 errors were writable-flag misreadings for Codex and tree-structure misreadings for Claude; packing four levels into one tab hides nesting. Level has 9-19% more characters than tab4, but about the same input tokens for Codex (41,223 versus 41,214) and fewer for Claude (25,798 versus 26,728). The earlier "no more characters than Codex's tree" target is dropped: tokens and correct answers are what an agent pays for.
 
-Level would also miss the earlier no-larger-character target on these fresh windows: 46,762 versus 41,493 reference characters for Discord, and 12,997 versus 11,904 for Brave. Its correctness result therefore comes with a measured size tradeoff.
+One pass per cell cannot prove a general accuracy difference. Repeat the question sets after any later format change.
 
-The recommendation is not applied. The required Claude comparison is missing, and one pass per cell cannot establish a general accuracy difference. The initial excluded Codex run scored all answers correctly but emitted an ignored-configuration warning; its raw records remain private and it is not mixed into the accepted table. No source format changed, so there is no new format benchmark claim. Earlier paired speed measurements remain in the read-parity plan.
+## Validation
 
-A possible later compact experiment is an explicit legend for typed write flags (`w:str`, `w:bool`, `w:float`) rather than relying on `w=settable`. That is an untested follow-up, not an accepted fix.
-
-## What top experts in accessibility evaluation would do
-
-Keep the raw captures and program-generated answer keys immutable, separate provider refusals from model mistakes, and complete the missing model on the same captures. Repeat enough independent samples before treating small accuracy differences as a stable format effect. If the default or legend changes, rerun both question sets, paired speed/size benchmarks and Swift checks before accepting it.
-
-## Validation and remaining work
-
-Five independent Node oracle/scorer tests and the documentation check pass. Swift build passes. A full Swift test run executed 413 tests with eight skipped and one failure in the existing `CursorWindowFollowTests.testServiceClickRegistersLiveWindowAndFeedbackMatchesMovedButton`: its current xctest window could not be resolved. No Swift source changed. The failure remains visible; this report does not claim a clean full Swift run.
-
-Resume only the missing Claude cells after account capacity becomes available, using the existing private directory and `--retry-provider=claude`. Then regenerate this report, settle the recommendation with both model tables, and run the conditional format-change gates if any format is changed. Private trees, prompts, expected answers, model responses and complete logs stay outside Git. The owning Workshop intake workstream remains read-only for this lane.
+- Five Node oracle and scorer tests pass (`node --test experiments/parity/format-eval/`).
+- After the default change: the full Swift suite and paired read benchmarks run again (see the read-parity plan).
+- Private trees, prompts, expected answers, model responses and logs stay outside Git.

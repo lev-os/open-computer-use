@@ -36,7 +36,7 @@ All other compactions remain enabled in both modes.
 | Discord | 44801 | 37712 | 39563 |
 | Brave | 11345 | 10475 | 10629 |
 
-One tab per level exceeds the reference in both windows, so keep tab4 as default. `OPEN_COMPUTER_USE_AX_INDENTATION=level` selects upstream indentation; `tab4` selects packed indentation. Product/probe captured text matched exactly per mode; cross-mode text differs only in indentation and legend. The semantic fixtures retain identical action records and role/name/value text.
+One tab per level exceeds the reference in characters in both windows. The format test (experiments/parity/format-eval/RESULTS.md) then showed level is the only format both models read without error, at about the same input tokens, so level is the default from 2026-10-30. `OPEN_COMPUTER_USE_AX_INDENTATION=level` selects upstream indentation; `tab4` selects packed indentation. Product/probe captured text matched exactly per mode; cross-mode text differs only in indentation and legend. The semantic fixtures retain identical action records and role/name/value text.
 
 ## Standards and boundaries
 

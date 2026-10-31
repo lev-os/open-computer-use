@@ -23,10 +23,10 @@ for(const app of manifest.apps){
  }
 }
 const formats=['tab4','level','codex'];
-const aggregate=formats.map(format=>{
- const rs=rows.filter(r=>r.model==='codex'&&r.format===format&&r.status==='measured');
- return {format,correct:rs.reduce((s,r)=>s+r.correct,0),total:rs.reduce((s,r)=>s+r.total,0),inputTokens:rs.reduce((s,r)=>s+r.inputTokens,0)};
-});
+const aggregate=['codex','claude'].flatMap(model=>formats.map(format=>{
+ const rs=rows.filter(r=>r.model===model&&r.format===format&&r.status==='measured');
+ return {model,format,correct:rs.reduce((s,r)=>s+r.correct,0),total:rs.reduce((s,r)=>s+r.total,0),inputTokens:rs.reduce((s,r)=>s+r.inputTokens,0)};
+}));
 const size=manifest.apps.map(app=>({app:app.id,...Object.fromEntries(app.captures.map(c=>[c.format,c.chars]))}));
 const summary={sourceCommit:manifest.sourceCommit,codexDefaults:data.codexDefaults,rows,aggregate,size};
 fs.writeFileSync(path.join(import.meta.dirname,'measurements.json'),JSON.stringify(summary,null,2)+'\n');

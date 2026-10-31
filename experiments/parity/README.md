@@ -52,7 +52,7 @@ The probe now calls the same production SnapshotBuilder with read-only recovery,
 
 ## Indentation choice
 
-`OPEN_COMPUTER_USE_AX_INDENTATION=level` selects one tab per tree level while retaining the other compact spellings. Its legend is `[w=settable]`. `tab4` selects four-column tab-stop packing with `[tab=4 w=settable]`. The default remains `tab4`: the measured product level-mode trees were 44801/11345 characters versus reference 39563/10629, while tab4 produced 37712/10475. Unknown values use the default. Set the variable on the product process; app-agent requests forward this prefixed variable as well.
+`OPEN_COMPUTER_USE_AX_INDENTATION=level` selects one tab per tree level while retaining the other compact spellings. Its legend is `[w=settable]`. `tab4` selects four-column tab-stop packing with `[tab=4 w=settable]`. The default is `level` (2026-10-30): in the format test both Claude and Codex answered every question right with it, while tab4 lost 7 of 156 answers, at about the same input tokens (format-eval/RESULTS.md). Level trees have more characters (product 44801/11345 versus tab4 37712/10475 and reference 39563/10629). Unknown values use the default. Set the variable on the product process; app-agent requests forward this prefixed variable as well.
 
 Semantic fixtures verify that these modes differ only in indentation and legend, with identical role/name/value text and numeric action records. Captured real product/probe trees also matched exactly in both modes.
 

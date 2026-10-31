@@ -50,22 +50,34 @@
       "app": "discord",
       "model": "claude",
       "format": "tab4",
-      "status": "unmeasured",
-      "failureKind": "CLI failure"
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 19494,
+      "cachedInputTokens": 0,
+      "wrong": []
     },
     {
       "app": "discord",
       "model": "claude",
       "format": "level",
-      "status": "unmeasured",
-      "failureKind": "skipped after CLI failure"
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 18746,
+      "cachedInputTokens": 0,
+      "wrong": []
     },
     {
       "app": "discord",
       "model": "claude",
       "format": "codex",
-      "status": "unmeasured",
-      "failureKind": "skipped after CLI failure"
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 16507,
+      "cachedInputTokens": 0,
+      "wrong": []
     },
     {
       "app": "brave",
@@ -126,42 +138,136 @@
       "app": "brave",
       "model": "claude",
       "format": "tab4",
-      "status": "unmeasured",
-      "failureKind": "skipped after CLI failure"
+      "status": "measured",
+      "correct": 35,
+      "total": 39,
+      "inputTokens": 7234,
+      "cachedInputTokens": 0,
+      "wrong": [
+        {
+          "id": "q29",
+          "question": "For the first node with role \"group/container\": How many immediate indexed children does it have?",
+          "property": "children",
+          "expected": 1,
+          "actual": 4
+        },
+        {
+          "id": "q31",
+          "question": "For the first node with role \"group/container\": What is its last immediate child element number?",
+          "property": "lastChild",
+          "expected": 2,
+          "actual": 245
+        },
+        {
+          "id": "q32",
+          "question": "For the first node with role \"group/container\": How many indexed descendants are in its complete subtree?",
+          "property": "descendants",
+          "expected": 241,
+          "actual": 244
+        },
+        {
+          "id": "q33",
+          "question": "For the first node with role \"group/container\": What is the first indexed element after its complete subtree?",
+          "property": "afterSubtree",
+          "expected": 243,
+          "actual": 246
+        }
+      ]
     },
     {
       "app": "brave",
       "model": "claude",
       "format": "level",
-      "status": "unmeasured",
-      "failureKind": "skipped after CLI failure"
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 7052,
+      "cachedInputTokens": 0,
+      "wrong": []
     },
     {
       "app": "brave",
       "model": "claude",
       "format": "codex",
-      "status": "unmeasured",
-      "failureKind": "skipped after CLI failure"
+      "status": "measured",
+      "correct": 35,
+      "total": 39,
+      "inputTokens": 6578,
+      "cachedInputTokens": 0,
+      "wrong": [
+        {
+          "id": "q29",
+          "question": "For the first node with role \"group/container\": How many immediate indexed children does it have?",
+          "property": "children",
+          "expected": 1,
+          "actual": 4
+        },
+        {
+          "id": "q31",
+          "question": "For the first node with role \"group/container\": What is its last immediate child element number?",
+          "property": "lastChild",
+          "expected": 2,
+          "actual": 218
+        },
+        {
+          "id": "q32",
+          "question": "For the first node with role \"group/container\": How many indexed descendants are in its complete subtree?",
+          "property": "descendants",
+          "expected": 214,
+          "actual": 217
+        },
+        {
+          "id": "q33",
+          "question": "For the first node with role \"group/container\": What is the first indexed element after its complete subtree?",
+          "property": "afterSubtree",
+          "expected": 216,
+          "actual": 219
+        }
+      ]
     }
   ],
   "aggregate": [
     {
+      "model": "codex",
       "format": "tab4",
       "correct": 75,
       "total": 78,
       "inputTokens": 41214
     },
     {
+      "model": "codex",
       "format": "level",
       "correct": 78,
       "total": 78,
       "inputTokens": 41223
     },
     {
+      "model": "codex",
       "format": "codex",
       "correct": 77,
       "total": 78,
       "inputTokens": 38880
+    },
+    {
+      "model": "claude",
+      "format": "tab4",
+      "correct": 74,
+      "total": 78,
+      "inputTokens": 26728
+    },
+    {
+      "model": "claude",
+      "format": "level",
+      "correct": 78,
+      "total": 78,
+      "inputTokens": 25798
+    },
+    {
+      "model": "claude",
+      "format": "codex",
+      "correct": 74,
+      "total": 78,
+      "inputTokens": 23085
     }
   ],
   "size": [
