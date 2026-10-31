@@ -727,7 +727,9 @@ final class OpenComputerUseKitTests: XCTestCase {
         )
         let dragDescription = tools["drag"]?.description ?? ""
         XCTAssertTrue(dragDescription.contains("OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1"))
-        XCTAssertTrue(dragDescription.contains("window moves, text selection, or Finder drag-and-drop"))
+        XCTAssertTrue(dragDescription.contains("captured app and window"))
+        XCTAssertTrue(dragDescription.contains("unverified effect returns an error"))
+        XCTAssertTrue(dragDescription.contains("Cross-app drag-and-drop and window moves"))
         XCTAssertTrue(dragDescription.hasSuffix("This tool is part of plugin `Computer Use`."))
         let getAppStateSchema = tools["get_app_state"]?.inputSchema
         let getAppStateProperties = getAppStateSchema?["properties"] as? [String: [String: Any]]

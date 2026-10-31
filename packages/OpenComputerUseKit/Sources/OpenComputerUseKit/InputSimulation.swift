@@ -171,7 +171,8 @@ enum InputSimulation {
                 clickState: type == .mouseMoved ? 0 : 1, phase: 3, clickGroupID: group, spi: spi)
             applyDragMotionFields(to: event, delta: delta, eventNumber: gesture)
             event.postToPid(target.pid)
-            Thread.sleep(forTimeInterval: 0.03)
+            // Keep a frame-sized gap; the initial press has its own 50 ms hold.
+            Thread.sleep(forTimeInterval: 0.02)
         }
         var lastScreen = target.screenPoint
         var lastLocal = target.windowPoint
