@@ -1,7 +1,7 @@
 # Action parity: product execution and real fixture proof
 
 ## Current vs Ideal
-The product follow-up is complete. Standalone `OpenComputerUse` executes its linked code and performs a real app-local drag. The original timing goal remains partial because printable-key latency exceeds 1.5x of Codex. Signed app-contained acceptance remains pending.
+The product follow-up now uses live stable geometry and completed endpoint receipts. Standalone `OpenComputerUse` executes its linked code and performs a real app-local drag. The original timing goal remains partial because printable-key latency exceeds 1.5x of Codex. Signed app-contained acceptance remains pending.
 
 | Action | Product ms | Codex ms | Verified |
 | --- | ---: | ---: | --- |
@@ -32,6 +32,13 @@ Pin the product and benchmark hashes. Use one script on both engines, vary drag 
 `docs/REPO_COLLAB_GUIDE.md` requires local focused commits and synchronized documentation. `docs/HISTORY_GUIDE.md` requires the existing sanitized history. `docs/ARCHITECTURE.md` owns routing and observation boundaries. The lane leaves tree reading and session guards unchanged.
 
 The workshop-intake owner is in another checkout; the brief prohibits edits there. The external lane report holds progress, results, hashes and exact signing prerequisites. No installed binary is replaced. Source changes stay on parity-act.
+
+## Fresh-session follow-up
+- [x] Observe AX geometry before and after the screenshot before each drag. Reject moving layouts and mismatched image aspect ratios.
+- [x] Verify native mouse-down, final drag and mouse-up through a fresh process/window-bound receipt. Reject absent, stale, incomplete and mismatched receipts. Apps without the protocol fail before input.
+- [x] Three separate optimized product sessions verify all nine requested drags: 851, 824 and 814 ms session medians.
+- [x] Hostile receipt shifts the final drag endpoint by 12 points; the product returns `drag endpoints mismatch` (819 ms).
+- [ ] Profile printable-key latency against the 10 ms threshold, then fix or explain with numbers.
 
 ## Remaining work
 Validate the optimized signed development app through its app-agent path when JP grants the required identity and permissions. Revisit the original key latency target in a separate bounded investigation if it persists. Cross-app drag/drop, window moves, Calculator/TextEdit and broad provider compatibility remain outside this fixture result.

@@ -260,7 +260,7 @@ turn/connection cleanup remain available when disabled.
 `drag` has no method parameter. On macOS, use the default process-level pointer gate for app-local drags:
 
 - Gate unset: window-addressed mouse events are posted to the target PID. They carry the captured window ID, local coordinates, motion deltas and a shared gesture identity. Each event checks the unlocked session and window ownership. The system pointer stays still.
-- A successful result requires a change in cached AX values or window geometry and includes `Drag delivered via app_post`. If the effect cannot be verified, the tool returns an error. Visual-only canvas changes can therefore return an unverified-effect error.
+- A successful macOS result requires a fresh app-provided endpoint receipt and includes `Drag delivered via app_post`. The receipt must match mouse-down, final drag and mouse-up within one window point. Apps without the receipt protocol return an error before input; stale, incomplete or mismatched receipts return errors after delivery. A changed AX value alone does not prove the requested endpoints. See `DragEndpointVerification.swift` for the receipt format.
 - Cross-app drag/drop and window moves need separate validation. Prefer file operations, `select_text`, or the app's own window controls when these provide the requested result.
 - Use `OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1` only when the user explicitly authorizes real pointer movement. That path uses global HID events. In an MCP configuration, set it in the server entry's `env` and restart the server.
 

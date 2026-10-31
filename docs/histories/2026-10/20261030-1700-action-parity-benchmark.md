@@ -64,3 +64,12 @@ The product's final three-run medians are:
 The 20 ms cadence series verifies 3/3 drags at 790 ms median, versus Codex at 729 ms. The slower verified 30 ms series is retained. The rebuilt probe and state-output-off product also drag successfully. Final GUI tests execute 408 tests with 8 skipped and zero failures. The direct product is ad-hoc signed without a Developer ID team; app-contained signed acceptance remains a separate gate.
 
 Affected files also include product entry-point/proxy selection, permission diagnostics, shared mouse-event stamping, tool descriptions, the fixture callback counter and the repository skill's drag guidance. No installed executable was replaced.
+
+### Follow-up: stable geometry and delivered endpoints
+The benchmark now reads live AX metadata on both sides of its screenshot before every drag. It rejects changing layouts and incompatible image geometry. This removes the stale fixture-export coordinates that had shifted the requested path by 20 points horizontally and 6 vertically.
+
+Native macOS drag now requires a fresh completed endpoint receipt tied to the captured process, window and bounds. The fixture records mouse-down, final drag and mouse-up callbacks in window-top-left points. All endpoints must match within one point. Missing receipts fail before input; stale, incomplete or mismatched receipts fail closed. General apps without the receipt protocol are explicitly unsupported by this verification path. Synthetic fixture bridge behavior is unchanged.
+
+Three separate optimized product sessions verified all nine drags. Session medians were 851, 824 and 814 ms. The endpoint validator tests cover mismatched down/drag/up, missing mouse-up, stale sequences, malformed geometry and read failure. Swift build and 412 tests pass, with 8 skipped. Raw benchmark artifacts are saved directly before the relay returns, because large relay stdout writes can be truncated.
+
+The hostile integration case shifts the final drag receipt by 12 points while preserving mouse-down and mouse-up. The product rejects it with `drag endpoints mismatch` in 819 ms. All six Node parser/geometry tests pass.

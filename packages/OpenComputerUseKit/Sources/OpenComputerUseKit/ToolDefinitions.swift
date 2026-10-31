@@ -71,7 +71,7 @@ public enum ToolDefinitions {
         ),
         ToolDefinition(
             name: "drag",
-            description: "Drag from one point to another using pixel coordinates. Default delivery is addressed to the captured app and window and does not move the system pointer. An observable accessibility value or window geometry change is required; an unverified effect returns an error. Cross-app drag-and-drop and window moves need separate validation. OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1 authorizes the global pointer path, which may move the real pointer. Successful results report the delivery path. This tool is part of plugin `Computer Use`.",
+            description: "Drag from one point to another using pixel coordinates. Default delivery is addressed to the captured app and window and does not move the system pointer. On macOS, a fresh app-provided endpoint acknowledgement must match mouse-down, final drag and mouse-up within one window point; missing or mismatched acknowledgements return an error. Cross-app drag-and-drop and window moves need separate validation. OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1 authorizes the global pointer path, which may move the real pointer. Successful results report the delivery path. This tool is part of plugin `Computer Use`.",
             annotations: defaultAnnotations(),
             inputSchema: objectSchema(
                 properties: [
