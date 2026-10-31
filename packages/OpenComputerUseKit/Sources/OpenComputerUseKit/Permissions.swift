@@ -68,7 +68,11 @@ public struct PermissionDiagnostics: Sendable {
     public let accessibilityTrusted: Bool
     public let screenCaptureGranted: Bool
 
-    public static func current() -> PermissionDiagnostics {
+    public static func current(includePersisted: Bool = true) -> PermissionDiagnostics {
+        if !includePersisted {
+            return PermissionDiagnostics(accessibilityTrusted: AXIsProcessTrusted(),
+                                         screenCaptureGranted: CGPreflightScreenCaptureAccess())
+        }
         let persisted = TCCAuthorizationStore.current
         let runtimeAccessibilityTrusted = AXIsProcessTrusted()
         let runtimeScreenCaptureGranted = CGPreflightScreenCaptureAccess()
@@ -143,6 +147,11 @@ public enum PermissionSupport {
 
     public static func isOpenComputerUseBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
         bundleIdentifier == Self.bundleIdentifier || bundleIdentifier == developmentBundleIdentifier
+    }
+
+    /// The bundle containing this executable, without discovery of an installed copy.
+    public static func executableAppBundleURL() -> URL? {
+        resolvedMainAppBundleURL()
     }
 
     public static func currentAppBundleURL() -> URL? {

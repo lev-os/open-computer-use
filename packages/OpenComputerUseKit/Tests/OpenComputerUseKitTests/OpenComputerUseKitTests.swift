@@ -423,6 +423,16 @@ final class OpenComputerUseKitTests: XCTestCase {
         XCTAssertNil(AppDiscovery.bestResolutionIndex(of: [], matching: "Safari"))
     }
 
+    func testStandaloneAutomationDoesNotDelegateToDiscoveredInstalledBundle() {
+        for command in [OpenComputerUseCLICommand.mcp, .doctor(), .listApps,
+                        .snapshot(app: "Fixture"), .call(.single(toolName: "list_apps", argumentsJSON: nil, argumentsFile: nil))] {
+            XCTAssertFalse(shouldUseMacOSAppAgentProxy(command: command, proxyDisabled: false,
+                appBundleAvailable: true, runningFromLaunchServicesAppInstance: false, executableInAppBundle: false))
+            XCTAssertTrue(shouldUseMacOSAppAgentProxy(command: command, proxyDisabled: false,
+                appBundleAvailable: true, runningFromLaunchServicesAppInstance: false, executableInAppBundle: true))
+        }
+    }
+
     func testMacOSAppAgentProxyDecisionKeepsNonAutomationCommandsLocal() {
         for command in [
             OpenComputerUseCLICommand.turnEnded(payload: nil),
@@ -717,7 +727,9 @@ final class OpenComputerUseKitTests: XCTestCase {
         )
         let dragDescription = tools["drag"]?.description ?? ""
         XCTAssertTrue(dragDescription.contains("OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1"))
-        XCTAssertTrue(dragDescription.contains("window moves, text selection, or Finder drag-and-drop"))
+        XCTAssertTrue(dragDescription.contains("captured app and window"))
+        XCTAssertTrue(dragDescription.contains("unverified effect returns an error"))
+        XCTAssertTrue(dragDescription.contains("Cross-app drag-and-drop and window moves"))
         XCTAssertTrue(dragDescription.hasSuffix("This tool is part of plugin `Computer Use`."))
         let getAppStateSchema = tools["get_app_state"]?.inputSchema
         let getAppStateProperties = getAppStateSchema?["properties"] as? [String: [String: Any]]
@@ -1592,14 +1604,14 @@ final class OpenComputerUseKitTests: XCTestCase {
         XCTAssertEqual(dragDeliveryPath(environment: ["OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS": " True "]), .global)
     }
 
-    func testDragDeliveryNoteExplainsWhyDefaultPathCannotDriveWindowServerDrags() {
+    func testDragDeliveryNoteDescribesWindowAddressingAndLimits() {
         let appPostNote = dragDeliveryNote(for: .appPost)
         XCTAssertTrue(appPostNote.hasPrefix("Drag delivered via app_post"))
         XCTAssertTrue(appPostNote.contains("system pointer did not move"))
         XCTAssertTrue(appPostNote.contains("window moves"))
-        XCTAssertTrue(appPostNote.contains("text selection"))
-        XCTAssertTrue(appPostNote.contains("Finder drag-and-drop"))
-        XCTAssertTrue(appPostNote.contains("OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1"))
+        XCTAssertTrue(appPostNote.contains("window-addressed events"))
+        XCTAssertTrue(appPostNote.contains("captured window and owner"))
+        XCTAssertTrue(appPostNote.contains("Cross-app drag-and-drop and window moves need separate validation"))
 
         let globalNote = dragDeliveryNote(for: .global)
         XCTAssertTrue(globalNote.hasPrefix("Drag delivered via global pointer path"))

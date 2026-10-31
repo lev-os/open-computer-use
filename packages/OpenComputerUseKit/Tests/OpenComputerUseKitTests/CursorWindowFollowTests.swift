@@ -52,9 +52,27 @@ final class CursorWindowFollowTests: XCTestCase {
     }
 
     @MainActor
+    private func awaitObservation(_ file: URL, timeout: TimeInterval = 3,
+                                  matching predicate: (VisualCursorObservationSnapshot) -> Bool) throws -> VisualCursorObservationSnapshot {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let data = try? Data(contentsOf: file),
+               let state = try? JSONDecoder().decode(VisualCursorObservationSnapshot.self, from: data),
+               predicate(state) { return state }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTFail("Cursor did not reach the expected asynchronous state before the deadline")
+        throw NSError(domain: "CursorFollowTests", code: 2)
+    }
+
+    @MainActor
     private func assertPosition(_ file: URL, frame: CGRect, file testFile: StaticString = #filePath, line: UInt = #line) throws {
-        let state = try JSONDecoder().decode(VisualCursorObservationSnapshot.self, from: Data(contentsOf: file))
         let expected = point(frame)
+        let state = try awaitObservation(file) { state in
+            guard let tip = state.tipPosition, let rest = state.restingTipPosition else { return false }
+            return abs(tip.x - expected.x) <= 1 && abs(tip.y - expected.y) <= 1 &&
+                abs(rest.x - expected.x) <= 1 && abs(rest.y - expected.y) <= 1
+        }
         XCTAssertEqual(try XCTUnwrap(state.restingTipPosition).x, expected.x, accuracy: 1, file: testFile, line: line)
         XCTAssertEqual(try XCTUnwrap(state.restingTipPosition).y, expected.y, accuracy: 1, file: testFile, line: line)
         XCTAssertEqual(try XCTUnwrap(state.tipPosition).x, expected.x, accuracy: 1, file: testFile, line: line)
@@ -87,6 +105,7 @@ final class CursorWindowFollowTests: XCTestCase {
             RunLoop.main.add(second, forMode: .common)
             defer { first.invalidate(); second.invalidate() }
             SoftwareCursorOverlay.pulseClick(at: point(original), clickCount: 2, mouseButton: .left, in: nil, anchor: anchor(original))
+            _ = try awaitObservation(file) { $0.phase == "idle" }
             try assertPosition(file, frame: live.value)
         }
     }
@@ -100,6 +119,7 @@ final class CursorWindowFollowTests: XCTestCase {
             RunLoop.main.add(timer, forMode: .common)
             defer { timer.invalidate() }
             SoftwareCursorOverlay.moveCursor(to: point(original), in: nil, anchor: anchor(original))
+            _ = try awaitObservation(file) { $0.phase == "reanchored" }
             try assertPosition(file, frame: live.value)
             // The next pipeline stage must not restore the snapshot's old point.
             SoftwareCursorOverlay.settle(at: point(original), in: nil, anchor: anchor(original))
@@ -137,12 +157,17 @@ final class CursorWindowFollowTests: XCTestCase {
 
     @MainActor
     func testWindowAlreadyMovedBeforeTravelDoesNotAbortAgainstOriginalSnapshot() throws {
-        try withOverlay { _, original in
+        try withOverlay { file, original in
             let moved = original.offsetBy(dx: 240, dy: 100)
             CursorWindowFrameTracker.installFrameOverrideForTesting { _ in moved }
             let start = ProcessInfo.processInfo.systemUptime
             SoftwareCursorOverlay.moveCursor(to: point(original), in: nil, anchor: anchor(original))
-            XCTAssertGreaterThan(ProcessInfo.processInfo.systemUptime - start, 0.5)
+            XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - start, 0.5, "Input delivery must not wait for travel")
+            let expected = point(moved)
+            _ = try awaitObservation(file) { state in
+                guard let tip = state.tipPosition else { return false }
+                return abs(tip.x - expected.x) <= 1 && abs(tip.y - expected.y) <= 1
+            }
         }
     }
 
@@ -181,6 +206,7 @@ final class CursorWindowFollowTests: XCTestCase {
             _ = try service.click(app: app.bundleIdentifier ?? app.name, elementIndex: String(index),
                                   x: nil, y: nil, clickCount: 1, mouseButton: "left", clickMethod: .accessibility)
             XCTAssertEqual(counter.count, 1, "The real AX button action must still execute exactly once")
+            _ = try awaitObservation(file) { $0.phase == "idle" }
             let state = try JSONDecoder().decode(VisualCursorObservationSnapshot.self, from: Data(contentsOf: file))
             let expected = window.convertPoint(toScreen: CGPoint(x: button.frame.midX, y: button.frame.midY))
             XCTAssertEqual(try XCTUnwrap(state.tipPosition).x, expected.x, accuracy: 1)

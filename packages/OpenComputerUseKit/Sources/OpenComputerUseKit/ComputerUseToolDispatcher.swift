@@ -120,7 +120,7 @@ public final class ComputerUseToolDispatcher {
             return try service.setValue(
                 app: requireString("app", in: arguments),
                 elementIndex: requireElementIndex(in: arguments),
-                value: requireString("value", in: arguments)
+                value: requireValueString("value", in: arguments)
             )
         case "select_text":
             return try service.selectText(
@@ -148,6 +148,13 @@ public final class ComputerUseToolDispatcher {
             let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
             return ToolCallResult.text(message, isError: true)
         }
+    }
+
+    private func requireValueString(_ key: String, in arguments: [String: Any]) throws -> String {
+        guard let value = arguments[key] as? String else {
+            throw ComputerUseError.missingArgument(key)
+        }
+        return value // Empty text is a valid value when clearing a control.
     }
 
     private func requireString(_ key: String, in arguments: [String: Any]) throws -> String {

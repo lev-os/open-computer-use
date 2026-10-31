@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .executable(name: "OCUReadBench", targets: ["OCUReadBench"]),
+        .executable(name: "OCUActionProbe", targets: ["OCUActionProbe"]),
         .executable(name: "OCULockInstaller", targets: ["OCULockInstaller"]),
         .executable(name: "OCULockService", targets: ["OCULockService"]),
         .executable(name: "OCUGuardian", targets: ["OCUGuardian"]),
@@ -42,6 +43,11 @@ let package = Package(
     ],
     targets: [
         .executableTarget(name: "OCUReadBench", dependencies: ["OpenComputerUseKit"], path: "experiments/parity/ReadBench"),
+        .executableTarget(
+            name: "OCUActionProbe",
+            dependencies: ["OpenComputerUseKit"],
+            path: "experiments/parity/Sources/OCUActionProbe"
+        ),
         .target(
             name: "OpenComputerUseVirtualDisplayShim",
             path: "packages/OpenComputerUseVirtualDisplayShim",

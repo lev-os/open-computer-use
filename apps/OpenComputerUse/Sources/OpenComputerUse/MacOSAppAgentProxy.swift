@@ -31,7 +31,8 @@ enum MacOSAppAgentProxy {
             command: command,
             proxyDisabled: proxyDisabled,
             appBundleAvailable: PermissionSupport.currentAppBundleURL() != nil,
-            runningFromLaunchServicesAppInstance: isRunningFromLaunchServicesAppInstance
+            runningFromLaunchServicesAppInstance: isRunningFromLaunchServicesAppInstance,
+            executableInAppBundle: PermissionSupport.executableAppBundleURL() != nil
         )
     }
 

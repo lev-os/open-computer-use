@@ -198,6 +198,10 @@ enum SoftwareCursorOverlay {
     private static var lastAnchorFrame: CGRect?
     private static var visualDynamicsState: CursorVisualDynamicsState?
     private static var idleTimer: Timer?
+    private static var animationIdentity: UUID?
+    private static var animationTimer: Timer?
+    private static var motionInProgress = false
+    private static var afterMotion: (@MainActor () -> Void)?
     private static var hideTimer: Timer?
     private static var idlePhase: CGFloat = 0
     private static var observationPhase = "hidden"
@@ -211,6 +215,7 @@ enum SoftwareCursorOverlay {
             return
         }
 
+        cancelMotionAndPulse()
         prepareWindowIfNeeded()
         stopIdleAnimation()
         cancelPendingHide()
@@ -255,6 +260,10 @@ enum SoftwareCursorOverlay {
             return
         }
 
+        if motionInProgress {
+            afterMotion = { pulseClick(at: targetPoint, clickCount: clickCount, mouseButton: mouseButton, in: targetWindow, anchor: anchor) }
+            return
+        }
         configureOrdering(relativeTo: targetWindow)
         stopIdleAnimation()
         adoptAnchor(anchor)
@@ -265,8 +274,6 @@ enum SoftwareCursorOverlay {
         restingTipPosition = constrainedTarget
         observationPhase = "pulse"
         animateClickPulse(at: constrainedTarget, clickCount: max(clickCount, 1), mouseButton: mouseButton)
-        startIdleAnimation()
-        scheduleHide(after: visualCursorPostInteractionIdleTimeout())
     }
 
     static func settle(
@@ -278,6 +285,10 @@ enum SoftwareCursorOverlay {
             return
         }
 
+        if motionInProgress {
+            afterMotion = { settle(at: targetPoint, in: targetWindow, anchor: anchor) }
+            return
+        }
         configureOrdering(relativeTo: targetWindow)
         adoptAnchor(anchor)
         _ = reanchorIfWindowMoved()
@@ -296,6 +307,7 @@ enum SoftwareCursorOverlay {
     }
 
     static func reset() {
+        cancelMotionAndPulse()
         stopIdleAnimation()
         cancelPendingHide()
         displayedTipPosition = nil
@@ -427,60 +439,75 @@ enum SoftwareCursorOverlay {
         }
     }
 
+    private static func cancelMotionAndPulse() {
+        animationTimer?.invalidate()
+        animationTimer = nil
+        animationIdentity = nil
+        motionInProgress = false
+        afterMotion = nil
+    }
+
+    /// Rendering runs on ticks. Tool delivery and screenshot capture must not
+    /// wait for the cursor's travel or pulse animation to finish.
+    private static func animateFrames(duration: TimeInterval,
+        update: @escaping @MainActor (TimeInterval) -> Void,
+        completion: @escaping @MainActor () -> Void) {
+        animationTimer?.invalidate()
+        let start = CACurrentMediaTime()
+        let identity = UUID()
+        animationIdentity = identity
+        let timer = Timer(timeInterval: 1.0 / 120.0, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                guard animationIdentity == identity, let timer = animationTimer else { return }
+                let elapsed = CACurrentMediaTime() - start
+                update(min(elapsed, duration))
+                guard animationIdentity == identity else { return }
+                if elapsed >= duration {
+                    timer.invalidate()
+                    animationTimer = nil
+                    animationIdentity = nil
+                    completion()
+                }
+            }
+        }
+        animationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        update(0)
+    }
+
+    private static func finishMotion() {
+        motionInProgress = false
+        let completion = afterMotion
+        afterMotion = nil
+        completion?()
+    }
+
     private static func animateMove(from start: CGPoint, to end: CGPoint, relativeTo targetWindow: CursorTargetWindow?) {
         let candidate = bestMotionCandidate(from: start, to: end, relativeTo: targetWindow)
-        let path = candidate.path
-        // Use the recovered official progress spring timing instead of the older
-        // distance-compressed local duration, otherwise medium and long moves feel
-        // noticeably faster than the bundled app.
         let duration = OfficialCursorMotionModel.calibratedTravelDuration(
-            distance: distanceBetween(start, end),
-            measurement: candidate.measurement
-        )
-        let springTargetDuration = OfficialCursorMotionModel.closeEnoughTime
-        let startTime = CACurrentMediaTime()
+            distance: distanceBetween(start, end), measurement: candidate.measurement)
         var progress: CGFloat = 0
         var springState = CursorMotionSpringState()
-
-        while true {
+        motionInProgress = true
+        animateFrames(duration: duration, update: { elapsed in
             refreshActiveOrderingIfNeeded()
-
             if reanchorIfWindowMoved() {
+                animationTimer?.invalidate()
+                animationTimer = nil
+                animationIdentity = nil
+                finishMotion()
                 return
             }
-
-            let elapsed = CGFloat(CACurrentMediaTime() - startTime)
-            let normalizedElapsed = (elapsed / max(duration, 0.001)).clamped(to: 0...1)
-            let springTime = normalizedElapsed * springTargetDuration
+            let normalized = CGFloat(elapsed / max(duration, 0.001)).clamped(to: 0...1)
             (progress, springState) = CursorMotionProgressAnimator.advance(
-                current: progress,
-                state: springState,
-                to: springTime
-            )
-
-            let sample = path.sample(at: progress)
-            placeCursor(
-                using: advanceVisualDynamics(
-                    toward: sample.point,
-                    at: CACurrentMediaTime()
-                ),
-                clickProgress: 0
-            )
-
-            if normalizedElapsed >= 1 || CursorMotionProgressAnimator.isCloseEnough(progress: progress) {
-                break
-            }
-
-            pumpFrame()
-        }
-
-        placeCursor(
-            using: advanceVisualDynamics(
-                toward: end,
-                at: CACurrentMediaTime()
-            ),
-            clickProgress: 0
-        )
+                current: progress, state: springState,
+                to: normalized * OfficialCursorMotionModel.closeEnoughTime)
+            let sample = candidate.path.sample(at: progress)
+            placeCursor(using: advanceVisualDynamics(toward: sample.point, at: CACurrentMediaTime()), clickProgress: 0)
+        }, completion: {
+            placeCursor(using: advanceVisualDynamics(toward: end, at: CACurrentMediaTime()), clickProgress: 0)
+            finishMotion()
+        })
     }
 
     private static func bestMotionCandidate(from start: CGPoint, to end: CGPoint, relativeTo targetWindow: CursorTargetWindow?) -> CursorMotionCandidate {
@@ -632,44 +659,18 @@ enum SoftwareCursorOverlay {
 
     private static func animateClickPulse(at point: CGPoint, clickCount: Int, mouseButton: MouseButtonKind) {
         let pulseBias: CGFloat = mouseButton == .right ? 0.82 : 1
-
-        for pulse in 0..<clickCount {
-            let duration = 0.16
-            let startTime = CACurrentMediaTime()
-
-            while true {
-                _ = reanchorIfWindowMoved()
-                let elapsed = CACurrentMediaTime() - startTime
-                let rawProgress = min(max(elapsed / duration, 0), 1)
-                let clickProgress = sin(rawProgress * .pi) * pulseBias
-
-                placeCursor(
-                    using: advanceVisualDynamics(
-                        toward: restingTipPosition ?? point,
-                        at: CACurrentMediaTime()
-                    ),
-                    clickProgress: clickProgress
-                )
-
-                if rawProgress >= 1 {
-                    break
-                }
-
-                pumpFrame()
-            }
-
-            if pulse < clickCount - 1 {
-                pause(for: 0.05)
-            }
-        }
-
-        placeCursor(
-            using: advanceVisualDynamics(
-                toward: restingTipPosition ?? point,
-                at: CACurrentMediaTime()
-            ),
-            clickProgress: 0
-        )
+        let duration = Double(clickCount) * 0.16 + Double(max(clickCount - 1, 0)) * 0.05
+        animateFrames(duration: duration, update: { elapsed in
+            _ = reanchorIfWindowMoved()
+            let pulse = min(Int(elapsed / 0.21), clickCount - 1)
+            let progress = min(max((elapsed - Double(pulse) * 0.21) / 0.16, 0), 1)
+            placeCursor(using: advanceVisualDynamics(toward: restingTipPosition ?? point, at: CACurrentMediaTime()),
+                clickProgress: sin(progress * .pi) * pulseBias)
+        }, completion: {
+            placeCursor(using: advanceVisualDynamics(toward: restingTipPosition ?? point, at: CACurrentMediaTime()), clickProgress: 0)
+            startIdleAnimation()
+            scheduleHide(after: visualCursorPostInteractionIdleTimeout())
+        })
     }
 
     private static func startIdleAnimation() {

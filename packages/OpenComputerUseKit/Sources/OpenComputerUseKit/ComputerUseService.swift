@@ -247,7 +247,8 @@ func globalPointerFallbacksEnabled(environment: [String: String]) -> Bool {
     return ["1", "true", "yes", "on"].contains(rawValue)
 }
 
-/// Whether an action's result reads the window back (settle, then a full snapshot).
+/// Whether an action returns state. Default state is bounded; explicit 1/full
+/// retains the legacy full snapshot and screenshot.
 /// A program driving the tools (the `js` REPL adapter) reads state explicitly and
 /// sets `OPEN_COMPUTER_USE_ACTION_READ_BACK=0`, so its actions return a short status.
 func actionReadBackEnabled(environment: [String: String]) -> Bool {
@@ -261,12 +262,19 @@ func actionReadBackEnabled(environment: [String: String]) -> Bool {
     return !["0", "false", "no", "off"].contains(rawValue)
 }
 
+/// Explicit 1/full preserves the legacy full tree and screenshot result. The
+/// default still reads state back, but uses bounded cached-handle observation.
+func fullActionReadBackEnabled(environment: [String: String]) -> Bool {
+    guard let value = environment["OPEN_COMPUTER_USE_ACTION_READ_BACK"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else { return false }
+    return ["1", "true", "yes", "on", "full"].contains(value)
+}
+
 /// How a `drag` is delivered. `drag` has no method argument; the path is decided
 /// by the same process-level gate that authorizes `click_method=global`.
 enum DragDeliveryPath: String, CaseIterable {
-    /// `CGEvent.postToPid`: never moves the system pointer, but the events do not
-    /// pass through the window server, so window-server drag sessions (window
-    /// moves, text selection, Finder drag-and-drop) are not driven.
+    /// Window-addressed `CGEvent.postToPid`: does not move the system pointer.
+    /// App-local view drags are supported; system-owned cross-app drag sessions
+    /// and window moves need separate validation.
     case appPost = "app_post"
     /// `.cghidEventTap`: drives window-server drag sessions and may move the
     /// real pointer or change foreground focus.
@@ -280,7 +288,7 @@ func dragDeliveryPath(environment: [String: String]) -> DragDeliveryPath {
 func dragDeliveryNote(for path: DragDeliveryPath) -> String {
     switch path {
     case .appPost:
-        return "Drag delivered via app_post: mouse events were posted directly to the target process and the system pointer did not move. This path cannot drive window-server drag sessions such as window moves, text selection, or Finder drag-and-drop. If the drag had no effect, set OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1 in the server process environment to use the global pointer path, which may move the real pointer and change foreground focus."
+        return "Drag delivered via app_post: window-addressed events were posted directly to the target process and the system pointer did not move. The captured window and owner were checked for every event. Cross-app drag-and-drop and window moves need separate validation."
     case .global:
         return "Drag delivered via global pointer path: OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS is enabled, so the real pointer may have moved and foreground focus may have changed."
     }
@@ -562,23 +570,25 @@ public final class ComputerUseService {
 
     public init() {}
 
-    /// An action's result reads the window back, so the app gets a beat to redraw
-    /// first. Without read-back nothing is read, so there is no wait.
+    /// Keep the legacy settle pause only for explicitly requested full snapshots.
     private func pauseBeforeReadBack(_ interval: TimeInterval) {
-        guard actionReadBack else {
+        guard fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) else {
             return
         }
 
         Thread.sleep(forTimeInterval: interval)
     }
 
-    /// The result an action returns: the after-action snapshot, or a short status
-    /// when read-back is off.
+    /// Bounded state by default, full state when explicitly requested, or status
+    /// when read-back is off. Effect verification is independent of this flag.
     private func actionResult(for query: String, recoveryPolicy: SnapshotRecoveryPolicy = .allowActivation) throws -> ToolCallResult {
         guard actionReadBack else {
             return .text("ok")
         }
 
+        if !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+            return try boundedActionResult(currentSnapshot(for: query))
+        }
         return snapshotResult(for: try refreshSnapshot(for: query, recoveryPolicy: recoveryPolicy), style: .actionResult)
     }
 
@@ -680,6 +690,7 @@ public final class ComputerUseService {
 
         if let elementIndex {
             let record = try lookupElement(snapshot: snapshot, index: elementIndex)
+            if let element = record.element { try requireActionTarget(element, in: snapshot) }
             guard let windowPoint = clickPoint(for: record, snapshot: snapshot) else {
                 throw ComputerUseError.stateUnavailable("element \(elementIndex) has no clickable frame")
             }
@@ -855,19 +866,37 @@ public final class ComputerUseService {
             guard let identifier = record.identifier else {
                 throw ComputerUseError.invalidArguments("fixture scroll requires an identifier-backed element")
             }
+            guard identifier == "fixture-scroll-view" else {
+                throw ComputerUseError.invalidArguments("fixture scroll requires its scroll area")
+            }
+            let old = try FixtureBridge.readState()?.elements.first { $0.identifier == "fixture-scroll-status" }?.value ?? ""
             try FixtureBridge.post(FixtureCommand(kind: "scroll", identifier: identifier, direction: normalized, pages: pages))
-            Thread.sleep(forTimeInterval: 0.15)
+            try requireObservedActionChange("scroll", before: ["offset": old], validate: {}, read: {
+                guard let value = try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == "fixture-scroll-status" })?.value else { return [:] }
+                return ["offset": value]
+            })
             return try actionResult(for: query)
         }
+
+        guard let scrollElement = record.element else {
+            throw ComputerUseError.stateUnavailable("scroll requires a live accessibility target")
+        }
+        try requireActionTarget(scrollElement, in: snapshot)
+        let before = actionObservedValues(snapshot, scrollOnly: true)
 
         if let repeatCount = integralScrollPageCount(pages),
            let rawAction = record.rawActions.first(where: { $0.caseInsensitiveCompare("AXScroll\(normalized.capitalized)ByPage") == .orderedSame }),
            let element = record.element {
-            for _ in 0..<repeatCount {
-                try requireUsableComputerUseSession()
-                _ = AXUIElementPerformAction(element, rawAction as CFString)
-                Thread.sleep(forTimeInterval: 0.05)
-            }
+            try performActionScrollPages(repeatCount,
+                validate: { try requireActionTarget(element, in: snapshot) },
+                page: { AXUIElementPerformAction(element, rawAction as CFString) },
+                fallback: { remaining in
+                    guard let point = try globalPoint(for: record, snapshot: snapshot) else {
+                        throw ComputerUseError.stateUnavailable("scroll fallback has no target frame")
+                    }
+                    try performScrollEvent(at: point, direction: normalized, pages: remaining,
+                        targetDescription: "element_index=\(elementIndex)", snapshot: snapshot)
+                })
         } else if let point = try globalPoint(for: record, snapshot: snapshot) {
             try performScrollEvent(
                 at: point,
@@ -880,20 +909,36 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("element \(elementIndex) has no scrollable frame")
         }
 
-        return try actionResult(for: query)
+        let after = try requireObservedActionChange("scroll", before: before,
+            validate: { try requireActionTarget(scrollElement, in: snapshot) },
+            read: { actionObservedValues(snapshot, scrollOnly: true) })
+        let result = try actionResult(for: query)
+        return actionReadBack ? appendingObservedActionChange(to: result, name: "scroll", before: before, after: after) : result
     }
 
     public func drag(app query: String, fromX: Double, fromY: Double, toX: Double, toY: Double) throws -> ToolCallResult {
+        guard [fromX, fromY, toX, toY].allSatisfy(\.isFinite), fromX != toX || fromY != toY else {
+            throw ComputerUseError.invalidArguments("drag requires finite coordinates and a nonzero movement")
+        }
         let snapshot = try currentSnapshot(for: query)
         guard snapshot.observation.includeScreenshot else {
             throw ComputerUseError.stateUnavailable(SnapshotObservationOptions.screenshotOmittedNote + "; request a screenshot before screenshot-coordinate actions")
         }
         if snapshot.mode == .fixture {
+            let old = try FixtureBridge.readState()?.elements.first { $0.identifier == "fixture-drag-status" }?.value ?? ""
             try FixtureBridge.post(FixtureCommand(kind: "drag", identifier: "fixture-drag-pad", x: fromX, y: fromY, toX: toX, toY: toY))
-            Thread.sleep(forTimeInterval: 0.15)
+            try requireObservedActionChange("drag", before: ["drag": old], validate: {}, read: {
+                guard let value = try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == "fixture-drag-status" })?.value else { return [:] }
+                return ["drag": value]
+            })
             return try actionResult(for: query)
         }
 
+        guard let window = snapshot.windowElement else {
+            throw ComputerUseError.stateUnavailable("drag requires a captured window")
+        }
+        try requireActionTarget(window, in: snapshot)
+        let before = actionObservedValues(snapshot)
         let start = try screenshotToGlobalPoint(snapshot: snapshot, x: fromX, y: fromY)
         let end = try screenshotToGlobalPoint(snapshot: snapshot, x: toX, y: toY)
         let path = try performDragEvent(
@@ -902,8 +947,12 @@ public final class ComputerUseService {
             targetDescription: "from=(\(Int(fromX)), \(Int(fromY))) to=(\(Int(toX)), \(Int(toY)))",
             snapshot: snapshot
         )
+        let after = try requireObservedActionChange("drag", before: before,
+            validate: { try requireActionTarget(window, in: snapshot) },
+            read: { actionObservedValues(snapshot) })
+        let result = try actionResult(for: query)
         return appendingDragDeliveryNote(
-            to: try actionResult(for: query),
+            to: actionReadBack ? appendingObservedActionChange(to: result, name: "drag", before: before, after: after) : result,
             path: path
         )
     }
@@ -920,10 +969,7 @@ public final class ComputerUseService {
         if keyMethod == .skyKey {
             let target = try skyKeyTarget(for: snapshot)
             try InputSimulation.typeTextWithSkyLight(text, windowID: target.windowID, pid: target.pid)
-            return snapshotResult(
-                for: try refreshSnapshot(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod)),
-                style: .actionResult
-            )
+            return try actionResult(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod))
         }
 
         if try typeTextBySettingFocusedValueIfAvailable(text, in: snapshot) {
@@ -940,6 +986,8 @@ public final class ComputerUseService {
     }
 
     public func pressKey(app query: String, key: String, keyMethod: KeyMethod = .auto) throws -> ToolCallResult {
+        let started = TimingLog.now()
+        defer { TimingLog.log("press_key.total", since: started) }
         let snapshot = try currentSnapshot(for: query)
         if snapshot.mode == .fixture {
             try requireAutoKeyMethodForFixture(keyMethod)
@@ -951,12 +999,25 @@ public final class ComputerUseService {
         if keyMethod == .skyKey {
             let target = try skyKeyTarget(for: snapshot)
             try InputSimulation.pressKeyWithSkyLight(key, windowID: target.windowID, pid: target.pid)
-            return snapshotResult(
-                for: try refreshSnapshot(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod)),
-                style: .actionResult
-            )
+            return try actionResult(for: query, recoveryPolicy: keyActionSnapshotRecoveryPolicy(for: keyMethod))
         }
 
+        if key.utf8.count == 1, let scalar = key.utf8.first,
+           (97...122).contains(scalar) || (48...57).contains(scalar),
+           let element = try actionFocusedElement(snapshot),
+           let original = stringValue(of: element, attribute: kAXValueAttribute),
+           let expected = actionTextReplacement(value: original,
+                range: AccessibilityTextSelection.readRange(of: element), text: key) {
+            TimingLog.log("press_key.ready", since: started)
+            try applyVerifiedActionValue(expected,
+                validate: { try requireFocusedActionTarget(element, in: snapshot) },
+                write: { try InputSimulation.pressKey(key, pid: snapshot.app.pid, settle: 0) },
+                read: { stringValue(of: element, attribute: kAXValueAttribute) })
+            if actionReadBack && !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+                return verifiedValueActionResult(snapshot, element: element, value: expected)
+            }
+            return try actionResult(for: query)
+        }
         try InputSimulation.pressKey(key, pid: snapshot.app.pid)
         return try actionResult(for: query)
     }
@@ -990,8 +1051,18 @@ public final class ComputerUseService {
 
             let cursorTarget = visualCursorTarget(for: record, snapshot: snapshot)
             moveVisualCursor(to: cursorTarget)
-            try FixtureBridge.post(FixtureCommand(kind: "set_value", identifier: identifier, value: value))
-            Thread.sleep(forTimeInterval: 0.15)
+            guard identifier == "fixture-input" else {
+                settleVisualCursor(at: cursorTarget)
+                throw ComputerUseError.message(nonSettableSetValueErrorMessage)
+            }
+            do {
+                try applyVerifiedActionValue(value, validate: {}, write: {
+                    try FixtureBridge.post(FixtureCommand(kind: "set_value", identifier: identifier, value: value))
+                }, read: { try? FixtureBridge.readState()?.elements.first(where: { $0.identifier == identifier })?.value })
+            } catch {
+                settleVisualCursor(at: cursorTarget)
+                throw error
+            }
             settleVisualCursor(at: cursorTarget)
             return try actionResult(for: query)
         }
@@ -1000,6 +1071,7 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("element \(elementIndex) has no backing accessibility object")
         }
 
+        try requireActionTarget(element, in: snapshot)
         guard try isSettableForSetValue(element: element, attribute: kAXValueAttribute) else {
             throw ComputerUseError.message(nonSettableSetValueErrorMessage)
         }
@@ -1008,19 +1080,27 @@ public final class ComputerUseService {
         moveVisualCursor(to: cursorTarget)
 
         do {
-            try requireUsableComputerUseSession()
-            let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFString)
-            guard result == .success else {
-                throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
-            }
-
-            pauseBeforeReadBack(0.1)
+            try applyVerifiedActionValue(value,
+                validate: { try requireActionTarget(element, in: snapshot) },
+                write: {
+                    let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, value as CFString)
+                    guard result == .success else {
+                        throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
+                    }
+                }, read: {
+                    var observed: CFTypeRef?
+                    guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &observed) == .success else { return nil }
+                    return observed
+                })
         } catch {
             settleVisualCursor(at: cursorTarget)
             throw error
         }
 
         settleVisualCursor(at: cursorTarget)
+        if actionReadBack && !fullActionReadBackEnabled(environment: ProcessInfo.processInfo.environment) {
+            return verifiedValueActionResult(snapshot, element: element, value: value)
+        }
         return try actionResult(for: query)
     }
 
@@ -1292,6 +1372,25 @@ public final class ComputerUseService {
 
         switch button {
         case .left:
+            if clickCount == 1,
+               [kAXTextFieldRole as String, "AXTextArea", "AXTextView"].contains(stringValue(of: element, attribute: kAXRoleAttribute) ?? ""),
+               isSettable(element: element, attribute: kAXFocusedAttribute) {
+                try requireUsableComputerUseSession()
+                guard try setBoolAttribute(named: kAXFocusedAttribute, on: element) else {
+                    throw ComputerUseError.stateUnavailable("click could not focus the text entry element")
+                }
+                var pid: pid_t = 0
+                guard AXUIElementGetPid(element, &pid) == .success,
+                      waitUntil(timeout: 0.2, interval: 0.005, {
+                          var focused: CFTypeRef?
+                          guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+                                let focused else { return false }
+                          return CFEqual(focused, element)
+                      }) != nil else {
+                    throw ComputerUseError.stateUnavailable("click could not verify text entry focus")
+                }
+                return true
+            }
             if clickCount <= 1,
                !hasAncestorRole("AXWebArea", of: element),
                try selectContainingListItem(for: element)
@@ -1804,7 +1903,7 @@ public final class ComputerUseService {
     }
 
     private func typeTextBySettingFocusedValueIfAvailable(_ text: String, in snapshot: AppSnapshot) throws -> Bool {
-        guard let element = snapshot.focusedElement else {
+        guard let element = try actionFocusedElement(snapshot) else {
             return false
         }
 
@@ -1813,20 +1912,23 @@ public final class ComputerUseService {
         }
 
         let baseValue = editableBaseValue(for: element)
-        try requireUsableComputerUseSession()
-        let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, (baseValue + text) as CFString)
-        switch result {
-        case .success:
-            return true
-        case .failure, .attributeUnsupported, .actionUnsupported, .cannotComplete, .noValue, .invalidUIElement, .illegalArgument:
-            return false
-        default:
-            throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
+        guard let replacement = actionTextReplacement(value: baseValue,
+                range: AccessibilityTextSelection.readRange(of: element), text: text) else {
+            return false // Let the app's keyboard path preserve its insertion/selection semantics.
         }
+        try applyVerifiedActionValue(replacement,
+            validate: { try requireFocusedActionTarget(element, in: snapshot) },
+            write: {
+                let result = AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, replacement as CFString)
+                guard result == .success else {
+                    throw ComputerUseError.message("AXUIElementSetAttributeValue failed with \(result.rawValue)")
+                }
+            }, read: { stringValue(of: element, attribute: kAXValueAttribute) })
+        return true
     }
 
     private func canTypeTextUsingKeyboardFallback(in snapshot: AppSnapshot) throws -> Bool {
-        guard let element = snapshot.focusedElement else {
+        guard let element = try actionFocusedElement(snapshot) else {
             return false
         }
 
@@ -2242,7 +2344,14 @@ public final class ComputerUseService {
             InputSimulation.prepareAppForGlobalPointerInput(snapshot.app)
             try InputSimulation.dragGlobally(from: eventStart, to: eventEnd)
         case .appPost:
-            try InputSimulation.dragTargeted(from: eventStart, to: eventEnd, pid: snapshot.app.pid)
+            guard let windowID = snapshot.targetWindowID, let bounds = snapshot.windowBounds else {
+                throw ComputerUseError.stateUnavailable("Targeted drag requires a captured window ID and bounds")
+            }
+            let localStart = CGPoint(x: start.x - bounds.minX, y: start.y - bounds.minY)
+            let localEnd = CGPoint(x: end.x - bounds.minX, y: end.y - bounds.minY)
+            let target = SkyClickTarget(screenPoint: eventStart, windowPoint: localStart,
+                windowBounds: bounds, windowID: windowID, pid: snapshot.app.pid)
+            try InputSimulation.dragTargeted(from: target, toScreenPoint: eventEnd, toWindowPoint: localEnd)
         }
 
         return path

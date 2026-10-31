@@ -33,7 +33,17 @@ enum OpenComputerUseMain {
 
         let command = try parseOpenComputerUseCLI(arguments: arguments)
 
-        if MacOSAppAgentProxy.shouldProxy(command: command) {
+        let proxy = MacOSAppAgentProxy.shouldProxy(command: command)
+        if ProcessInfo.processInfo.environment["OPEN_COMPUTER_USE_DEBUG_ROUTING"] == "1" {
+            let info: [String: Any] = [
+                "executable": Bundle.main.executableURL?.path ?? CommandLine.arguments[0],
+                "route": proxy ? "app-agent" : "in-process",
+                "executableBundle": PermissionSupport.executableAppBundleURL()?.path ?? NSNull(),
+            ]
+            let data = try JSONSerialization.data(withJSONObject: info, options: [.sortedKeys])
+            writeToStandardError("[open-computer-use] routing " + String(decoding: data, as: UTF8.self))
+        }
+        if proxy {
             exit(try MacOSAppAgentProxy.runProxy(command: command, arguments: arguments))
         }
 
@@ -51,7 +61,7 @@ enum OpenComputerUseMain {
                 try server.run()
             }
         case let .doctor(json):
-            let permissions = PermissionDiagnostics.current()
+            let permissions = PermissionDiagnostics.current(includePersisted: PermissionSupport.executableAppBundleURL() != nil)
             print(try json ? permissions.jsonText() : permissions.summary)
             if !json {
                 print(LockedUseDiagnostics.current().summary)
