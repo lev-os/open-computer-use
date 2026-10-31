@@ -1,0 +1,340 @@
+[
+  {
+    "id": "q01",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "index",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": What is its element number?"
+  },
+  {
+    "id": "q02",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "parent",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q03",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "role",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": What is its exact displayed role?"
+  },
+  {
+    "id": "q04",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "disabled",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": Is it marked disabled?"
+  },
+  {
+    "id": "q05",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "settable",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": Is it marked settable?"
+  },
+  {
+    "id": "q06",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "value",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": What is its explicit Value (Codex) or = value (OCU), excluding later metadata?"
+  },
+  {
+    "id": "q07",
+    "selector": {
+      "role": "button",
+      "name": "Inbox"
+    },
+    "property": "next",
+    "text": "For the node with exact role \"button\" and exact name \"Inbox\": What is the next indexed element in text order (including children)?"
+  },
+  {
+    "id": "q08",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "index",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": What is its element number?"
+  },
+  {
+    "id": "q09",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "parent",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q10",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "role",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": What is its exact displayed role?"
+  },
+  {
+    "id": "q11",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "disabled",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": Is it marked disabled?"
+  },
+  {
+    "id": "q12",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "settable",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": Is it marked settable?"
+  },
+  {
+    "id": "q13",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "value",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": What is its explicit Value (Codex) or = value (OCU), excluding later metadata?"
+  },
+  {
+    "id": "q14",
+    "selector": {
+      "role": "button",
+      "name": "User Settings"
+    },
+    "property": "next",
+    "text": "For the node with exact role \"button\" and exact name \"User Settings\": What is the next indexed element in text order (including children)?"
+  },
+  {
+    "id": "q15",
+    "selector": {
+      "role": "button"
+    },
+    "property": "index",
+    "text": "For the first node with role \"button\": What is its element number?"
+  },
+  {
+    "id": "q16",
+    "selector": {
+      "role": "button"
+    },
+    "property": "parent",
+    "text": "For the first node with role \"button\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q17",
+    "selector": {
+      "role": "button"
+    },
+    "property": "disabled",
+    "text": "For the first node with role \"button\": Is it marked disabled?"
+  },
+  {
+    "id": "q18",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "index",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is its element number?"
+  },
+  {
+    "id": "q19",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "parent",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q20",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "grandparent",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is its grandparent element number?"
+  },
+  {
+    "id": "q21",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "depth",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is its nesting depth, with a root at depth 0?"
+  },
+  {
+    "id": "q22",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "next",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is the next indexed element in text order (including children)?"
+  },
+  {
+    "id": "q23",
+    "selector": {
+      "role": "button",
+      "order": "deepest"
+    },
+    "property": "afterSubtree",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"button\": What is the first indexed element after its complete subtree?"
+  },
+  {
+    "id": "q24",
+    "selector": {
+      "role": "text entry area"
+    },
+    "property": "index",
+    "text": "For the first node with role \"text entry area\": What is its element number?"
+  },
+  {
+    "id": "q25",
+    "selector": {
+      "role": "text entry area"
+    },
+    "property": "parent",
+    "text": "For the first node with role \"text entry area\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q26",
+    "selector": {
+      "role": "text entry area"
+    },
+    "property": "settable",
+    "text": "For the first node with role \"text entry area\": Is it marked settable?"
+  },
+  {
+    "id": "q27",
+    "selector": {
+      "role": "text entry area"
+    },
+    "property": "value",
+    "text": "For the first node with role \"text entry area\": What is its explicit Value (Codex) or = value (OCU), excluding later metadata?"
+  },
+  {
+    "id": "q28",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "index",
+    "text": "For the first node with role \"outline\": What is its element number?"
+  },
+  {
+    "id": "q29",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "children",
+    "text": "For the first node with role \"outline\": How many immediate indexed children does it have?"
+  },
+  {
+    "id": "q30",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "firstChild",
+    "text": "For the first node with role \"outline\": What is its first immediate child element number?"
+  },
+  {
+    "id": "q31",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "lastChild",
+    "text": "For the first node with role \"outline\": What is its last immediate child element number?"
+  },
+  {
+    "id": "q32",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "descendants",
+    "text": "For the first node with role \"outline\": How many indexed descendants are in its complete subtree?"
+  },
+  {
+    "id": "q33",
+    "selector": {
+      "role": "outline"
+    },
+    "property": "afterSubtree",
+    "text": "For the first node with role \"outline\": What is the first indexed element after its complete subtree?"
+  },
+  {
+    "id": "q34",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "index",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is its element number?"
+  },
+  {
+    "id": "q35",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "parent",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is its immediate parent element number?"
+  },
+  {
+    "id": "q36",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "grandparent",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is its grandparent element number?"
+  },
+  {
+    "id": "q37",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "depth",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is its nesting depth, with a root at depth 0?"
+  },
+  {
+    "id": "q38",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "previous",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is the previous indexed element in text order?"
+  },
+  {
+    "id": "q39",
+    "selector": {
+      "role": "group/container",
+      "order": "deepest"
+    },
+    "property": "children",
+    "text": "For the deepest (break ties by first text occurrence) node with role \"group/container\": How many immediate indexed children does it have?"
+  }
+]

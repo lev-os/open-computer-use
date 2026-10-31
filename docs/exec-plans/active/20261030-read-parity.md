@@ -64,3 +64,15 @@ One tab per level exceeds the reference in both windows, so keep tab4 as default
 
 1. Resolve Developer ID private-key access and sign the prepared optimized dev bundle. Verify dev identifier, team and bound Info.plist before any permission grant.
 2. Verify Accessibility and Screen Recording for that exact signed bundle, then repeat packaged app-agent/adapter acceptance through the desktop relay.
+
+## Format comprehension continuation
+
+The next brief adds a separate comprehension gate. Use fresh private trees from the same existing windows, 20 or more deterministic questions per window, and independent Claude Opus 5.5 low-effort and default Codex CLI calls with tools disabled. The evaluator, question sets and sanitized findings live under `experiments/parity/format-eval/`.
+
+- [x] Capture both existing windows in tab4, level and Codex formats through the desktop relay. The optional fixture was not running.
+- [x] Generate 39 identical questions per window and private per-format answer keys. Native modes decode to identical records. Five independent oracle/scorer tests pass.
+- [x] Finish the Codex table and record a provisional level-format recommendation: compact 75/78, level 78/78, Codex 77/78. Compact saves nine aggregate input tokens against level.
+- [ ] Finish the Claude table. Two invocations, including one after the stated reset, returned the weekly-limit refusal. Keep its cells unmeasured.
+- [x] Prepare sanitized findings and reconcile the lane report. Live app trees, prompts and raw responses stay outside Git.
+
+The existing signed-app work remains deferred. No format or native source change is part of this continuation unless the comparison justifies one. The first full Swift check built successfully but hit an existing cursor-window fixture failure; the private lane report preserves the exact test and evidence.

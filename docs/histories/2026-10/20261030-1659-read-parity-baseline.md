@@ -38,3 +38,11 @@ Both indentation modes remain available. One tab per level with other compaction
 - `packages/OpenComputerUseKit/Tests/OpenComputerUseKitTests/AXSemanticRenderingTests.swift` and cache tests
 - `scripts/node-repl/`, `experiments/parity/`, architecture docs and the active read parity plan
 - `scripts/build-open-computer-use-app.sh`, `scripts/npm/build-packages.mjs` and `scripts/install-codex-plugin.sh`
+
+### Format comprehension continuation
+
+Added a private-capture evaluator, 39 public questions per window, deterministic answer generation and scoring, a bounded two-CLI supervisor, and sanitized numerical findings under `experiments/parity/format-eval/`. The compact and level native captures decode to identical records. Each model receives identical question text for each format, with an answer key computed from that format's own records. Raw app text, prompts, answer keys and model responses remain outside Git.
+
+The accepted default-Codex low-effort run scored compact 75/78, level 78/78, and Codex format 77/78. Compact missed three writable flags; Codex format missed one nesting depth. Compact used 41,214 input tokens against level's 41,223, so its character reduction did not give a useful input-token reduction here. The provisional recommendation favors level. The default and format remain unchanged while the requested Claude comparison is unavailable.
+
+Claude Opus 5.5 refused both the initial call and one fresh call after its stated reset because of the weekly account limit. Its six cells remain unmeasured. An earlier Codex batch emitted an ignored-config warning and is excluded; the accepted batch has no config warnings or tool calls. Five independent Node oracle/scorer checks and documentation checks pass. Swift build passes; the full Swift suite has one existing cursor-window fixture failure among 413 tests, with eight skips. No Swift source changed. This continuation remains partial and does not claim two-model acceptance or a clean full Swift run.
