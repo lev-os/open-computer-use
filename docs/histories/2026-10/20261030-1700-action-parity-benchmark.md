@@ -43,3 +43,24 @@ Final action medians, three runs per engine:
 The key timing target remains unmet. Normal native drag has no verified effect and returns an error. Ignored wheel input, ignored AX writes, read-only values, invalid scroll targets and zero drag are rejected. Sequential typing works without intervening reads; explicit full mode and state-output-off checks pass.
 
 The optimized development packaging check uses the dev identity and is unsigned. Signing initially timed out; signed app-agent behavior and broader app compatibility remain unverified. These measurements cover the optimized direct tool on the fixture. Signed app-agent acceptance remains deferred.
+
+
+### Product executable and working drag follow-up
+The product executable was silently delegating to the npm-installed app from October 27. An unchanged-binary proxy-on/off experiment and read-only agent metadata isolated the cause. Both permission checks were granted. Standalone product execution now stays local; packaged executables preserve app-agent routing. Routing diagnostics and a regression test cover that distinction.
+
+The former targeted drag posted generic PID events without captured-window addressing. It now stamps the window, window-local positions, motion deltas and gesture identity. Every event validates session and ownership. The real fixture callback counter and varying endpoints verify fresh mouse-down/drag delivery. Global pointer fallbacks stay disabled.
+
+The product's final three-run medians are:
+
+| Action | Product median ms | Codex median ms | Product verified |
+| --- | ---: | ---: | ---: |
+| click | 10 | 67 | 3/3 |
+| pressKey | 13 | 6 | 3/3 |
+| typeText | 6 | 25 | 3/3 |
+| setValue | 30 | 18 | 3/3 |
+| scroll | 108 | 1144 | 3/3 |
+| drag | 790 | 729 | 3/3 |
+
+The 20 ms cadence series verifies 3/3 drags at 790 ms median, versus Codex at 729 ms. The slower verified 30 ms series is retained. The rebuilt probe and state-output-off product also drag successfully. Final GUI tests execute 408 tests with 8 skipped and zero failures. The direct product is ad-hoc signed without a Developer ID team; app-contained signed acceptance remains a separate gate.
+
+Affected files also include product entry-point/proxy selection, permission diagnostics, shared mouse-event stamping, tool descriptions, the fixture callback counter and the repository skill's drag guidance. No installed executable was replaced.

@@ -78,20 +78,24 @@ OPEN_COMPUTER_USE_INCLUDE_LOCKED_USE=0 \
 
 The override accepts only `dev`. It keeps `com.ifuryst.opencomputeruse.dev` and the `(Dev)` name. Automatic Locked Use packaging remains limited to the release app identity. This lane checked unsigned packaging in an isolated build directory. Before app-agent acceptance, verify stable Developer ID signing, grant the two permissions and rerun the benchmark with that app's binary.
 
-## 2026-10-30 result
+## 2026-10-30 product result
 
-Real fixture only. Final action medians from three runs per engine, runtime candidate `10bb3cd532ec`:
+Standalone `OpenComputerUse` through the GUI relay, runtime code `171d4be36314`. Three runs per engine with the same fixture script:
 
-| Action | Before OCU ms | Final OCU ms | Final Codex ms | Within 1.5x |
-| --- | ---: | ---: | ---: | --- |
-| click | 3838 (unverified effect) | 55 | 73 | yes |
-| pressKey | 2045 (unverified effect) | 30 | 7 | no |
-| typeText | 1 (error) | 22 | 23 | yes |
-| scroll | 580 | 120 | 1171 | yes |
+| Action | Product median ms | Codex median ms | Product verified |
+| --- | ---: | ---: | ---: |
+| click | 10 | 67 | 3/3 |
+| pressKey | 13 | 6 | 3/3 |
+| typeText | 6 | 25 | 3/3 |
+| setValue | 30 | 18 | 3/3 |
+| scroll | 108 | 1144 | 3/3 |
+| drag | 790 | 729 | 3/3 |
 
-Click, typing and scroll meet the timing limit. Keypress remains 30 ms versus 7 ms for Codex. The fixed pause is removed for the verified printable-key path, but delivery/verification remains above the target. An existing private posting path did not improve the measured result and was not retained. Normal native drag remains unverified and returns an error; working drag is not claimed.
+All listed effects are verified. Click, typing and scroll meet the original 1.5x limit; printable-key latency remains above it. Drag now works through the product, using window-addressed events and a 20 ms per-event gap. The fixture reports real callbacks and the benchmark checks varying start/end points within one point.
 
-The GUI Swift suite passes: 407 tests, 8 skipped, 0 failures. The background-pane query/session failure observed at the accepted base passes in the correct desktop session. The report retains both final series, raw state/effect checks, separate read timings, hostile cases, source/binary hashes and exact signing prerequisites. Calculator, TextEdit and the signed app-agent path were not measured.
+The original product discrepancy was installed-app delegation: the unchanged product binary proxied into an older npm app, while the probe ran its own linked library. The proxy-disable control made that unchanged product use the local fixes. A standalone product now runs its own code by default; an executable inside an OCU app bundle retains its own app-agent path.
+
+The direct product is ad-hoc signed and has no Developer ID team. The working drag is therefore not blocked by Developer ID app signing. The GUI Swift suite passes: 408 tests, 8 skipped, 0 failures. Packaged app-agent acceptance and broader app compatibility remain separate. The external report retains routing metadata, both drag cadence series, exact endpoint/effect checks and binary hashes.
 
 ## Product executable routing
 

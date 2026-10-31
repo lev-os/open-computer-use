@@ -1,52 +1,37 @@
-# Action parity on the real fixture
-
-## Goal
-Reduce native action latency and reject unverified effects. Compare the optimized direct probe with Codex under the shared lock. Keep signed-app acceptance separate.
+# Action parity: product execution and real fixture proof
 
 ## Current vs Ideal
-The direct-tool run is complete with partial parity. Click, typing and scroll meet the 1.5x limit on the fixture. Printable-key delivery remains 30 ms versus 7 ms for Codex. Native drag returns an explicit error when its effect cannot be verified.
+The product follow-up is complete. Standalone `OpenComputerUse` executes its linked code and performs a real app-local drag. The original timing goal remains partial because printable-key latency exceeds 1.5x of Codex. Signed app-contained acceptance remains pending.
 
-The ideal result meets every timing target and repeats those checks through a signed optimized development app. That app-agent gate remains pending JP's signing and permission steps.
-
-| Action | Before OCU ms | Final OCU ms | Final Codex ms | Within 1.5x |
-| --- | ---: | ---: | ---: | --- |
-| click | 3838 (unverified effect) | 55 | 73 | yes |
-| pressKey | 2045 (unverified effect) | 30 | 7 | no |
-| typeText | 1 (error) | 22 | 23 | yes |
-| scroll | 580 | 120 | 1171 | yes |
-
-Before timings marked unverified or error do not represent a completed successful action. Final timing medians use three runs; raw distributions and read times are in the external lane report.
+| Action | Product ms | Codex ms | Verified |
+| --- | ---: | ---: | --- |
+| click | 10 | 67 | 3/3 |
+| pressKey | 13 | 6 | 3/3 |
+| typeText | 6 | 25 | 3/3 |
+| scroll | 108 | 1144 | 3/3 |
+| drag | 790 | 729 | 3/3 |
 
 ## What top experts in macOS automation would do
-Start from actual AX calls, event delivery, the fixture's own state and raw post-action reads. A returned success status alone is insufficient evidence.
+Trace the actual loaded executable before interpreting timings. Start from native API calls, real widget callbacks and raw post-action state. Separate returned status, observed effect and eventual full reads.
 
-Pin optimized binaries and the common action script. Separate action time from explicit full-read time. Exercise ignored writes, ignored wheel input, invalid targets and cancellation. Use the fixture's exported values, strict text assertions, live cursor observations and the Swift suite as independent checks.
+Pin the product and benchmark hashes. Use one script on both engines, vary drag endpoints, exercise ignored writes and wheel input, and retain every final series. Use the fixture's exported values, callback counts, strict value parser, live cursor observations and GUI-session Swift suite as evidence.
 
-## Scope and standards
-- Action service, verification, cursor scheduling, fixture controls, benchmark and minimal development packaging override.
-- `docs/REPO_COLLAB_GUIDE.md`: small local commits, synchronized docs and runnable checks. `docs/ARCHITECTURE.md`: app-agent and observation boundaries.
-- `docs/HISTORY_GUIDE.md`: one sanitized history. `docs/QUALITY_SCORE.md`: fixture evidence does not establish broad app compatibility.
-- No tree-reader edits, no main/read-worktree changes, no installed app replacement and no publication. Workshop-intake state is read-only under the brief; this lane's external report owns progress.
+## Completed implementation
+- [x] Native action fixes, bounded default state and nonblocking cursor lifecycle. Keep explicit full/off modes and mandatory effect checks.
+- [x] Product routing A/B: the unchanged binary selected the npm-installed October 27 app; proxy-disabled control ran local fixes. Both permission checks were granted.
+- [x] Standalone product now runs locally; app-contained executables preserve own app-agent identity. Bare permission diagnostics read actual runtime grants.
+- [x] Window-addressed PID drags include local position, deltas and gesture identity. Every event checks the session and captured window owner; global pointer fallback stays off.
 
-## Verification and completed milestones
-- [x] Baseline on both engines, optimized direct probe and GUI-session routing with guards intact.
-- [x] Empty values, verified text focus, UTF-16 selection replacement and live focus between actions.
-- [x] Verified values and scroll/drag effects; ignored-input and invalid-target falsifiers, including state-output-off checks.
-- [x] Bounded default state, explicit legacy full mode, nonblocking cursor lifecycle and remaining-page fallback.
-- [x] Matched frozen baseline and three final runs per engine. Both final series are retained with source and binary hashes.
-- [x] GUI Swift build and suite: 407 tests, 8 skipped, 0 failures. Parser falsifiers: 3 passed.
-- [x] Release-optimized development bundle identity checked without signing or installation.
-- [ ] JP-dependent signed app-agent acceptance.
+## Completed verification
+- [x] Three final product/Codex runs verify every action, including varying drag starts and ends. Working drag is established without Developer ID app signing.
+- [x] 20 ms cadence: 790 ms median versus Codex 729 ms, with 3/3 endpoint/callback checks. Retain the slower verified 30 ms series.
+- [x] GUI Swift tests: 408 total, 8 skipped, zero failures. Product build, probe sanity, chains and state-output-off falsifiers pass.
+- [ ] Signed app-agent acceptance, owned by JP after stable signing and permissions.
 
-## Stop decision and remaining work
-The brief permits stopping at the best measured result when a target cannot be met. This run stops with the key timing target unmet. The public path and an experimental use of the existing private posting entry point were measured. The experiment did not improve the result and was not retained. Further key-delivery work needs a new bounded investigation that preserves the effect checks.
+## Standards and boundaries
+`docs/REPO_COLLAB_GUIDE.md` requires local focused commits and synchronized documentation. `docs/HISTORY_GUIDE.md` requires the existing sanitized history. `docs/ARCHITECTURE.md` owns routing and observation boundaries. The lane leaves tree reading and session guards unchanged.
 
-JP must first produce a stable signed development app and grant its permissions. Then rerun the same three-run benchmark through the app-agent path, including timer cleanup and per-request settings. The direct-tool result does not establish that acceptance.
+The workshop-intake owner is in another checkout; the brief prohibits edits there. The external lane report holds progress, results, hashes and exact signing prerequisites. No installed binary is replaced. Source changes stay on parity-act.
 
-## Evidence
-The external lane report has the raw files, exact signing command and paths, before/after tables and local commits. Runtime candidate: `10bb3cd532ec5c1a4c782a7c9e56dd359502b205`. The initial graph-index attempt failed because an unverified shared generation was active, so source discovery used direct inspection.
-
-## Product-path follow-up
-The operator found that the product executable did not reproduce the probe. Read-only app-agent metadata and an unchanged-binary A/B test prove why: the bare product selected the npm-installed October 27 app; disabling that proxy used the local fixes. Both runtime permission checks were granted. This was delegated stale code, not missing dev-app permission or a missing fix in the linked library.
-
-The product now keeps standalone execution local and preserves app-agent behavior for app-contained executables. Product-path benchmarking and routing regression tests precede the drag follow-up. The remaining action is to deliver a real fixture drag through the product while keeping pointer and session safeguards.
+## Remaining work
+Validate the optimized signed development app through its app-agent path when JP grants the required identity and permissions. Revisit the original key latency target in a separate bounded investigation if it persists. Cross-app drag/drop, window moves, Calculator/TextEdit and broad provider compatibility remain outside this fixture result.
