@@ -74,3 +74,9 @@ Mixed-load samples remain in the external report. Host load and artifact I/O var
 - 2026-10-30: Keep original node selection. Compact only the printed representation and preserve all state/type information with an explicit legend.
 - 2026-10-30: Keep diffs off by default; they reduce output while AX still receives a full read.
 - 2026-10-30: Keep the dev bundle ID in optimized builds; preserve neighboring bundles and skip automatic Locked Use embedding for dev variants.
+
+## Product and format continuation
+
+The operator requested proof through the built product and an upstream-indentation comparison. A fresh product baseline measured 535 ms on Discord with implicit capture/default text limit; explicit AX-only/full text measured 480 ms versus probe 472.74 ms and reference 459 ms. The native executable had shared cached TreeRenderer code; a separately packaged app-agent and the selected bare binary are different execution artifacts.
+
+The probe now uses the complete production SnapshotBuilder. The JS AX getter requests full text without unused capture by default, retains an explicit capture override, and removes only the known observation-omission note. Native combined-tool defaults remain compatible. Full checks pass (412 Swift, 57 Node). A new real product/Worker/MCP pair measured Discord 629 ms versus reference 488 ms, and Brave 88 ms versus 97 ms, with identical product/probe tree sizes. More paired runs will qualify the final state.

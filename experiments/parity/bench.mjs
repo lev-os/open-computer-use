@@ -21,11 +21,11 @@ const code = `var __a = await cua.getApp(${JSON.stringify(app)}, { initialState:
 var __r = [];
 for (let i = 0; i < ${reads}; i++) {
   var __t = Date.now();
-  var __s = String(await __a.getAXState({ emit: false, disableDiffing: true }));
+  var __s = String(await __a.getAXState({ emit: false, disableDiffing: true${process.env.OCU_BENCH_AX_ONLY === "1" ? ", includeScreenshot: false" : ""}${process.env.OCU_BENCH_MAX_TEXT === "1" ? ", textLimit: \"max\"" : ""} }));
   __r.push([Date.now() - __t, __s.length]);
 }
 nodeRepl.write("BENCH " + JSON.stringify(__r));
-${process.env.OCU_CODEX_SNAPSHOT && engine === "codex" ? 'nodeRepl.write("SNAPSHOTJSON " + JSON.stringify(__s));' : ''}`;
+${((engine === "codex" && process.env.OCU_CODEX_SNAPSHOT) || (engine === "ocu" && process.env.OCU_PRODUCT_SNAPSHOT)) ? 'nodeRepl.write("SNAPSHOTJSON " + JSON.stringify(__s));' : ''}`;
 
 const LOCK = "/tmp/ocu-parity.lock";
 for (let i = 0; ; i++) {
@@ -61,13 +61,27 @@ try {
   } else {
     const f = path.join(os.tmpdir(), `ocu-parity-${process.pid}.mjs`);
     fs.writeFileSync(f, code);
-    out = execFileSync(process.env.OCU_BIN || "ocu", ["js", "--json", "--timeout", "120000", "--file", f], {
-      encoding: "utf8", env: { OPEN_COMPUTER_USE_ACTION_READ_BACK: "0", ...process.env }, timeout: 180000,
-    });
-    fs.unlinkSync(f);
+    try {
+      const args = ["js", "--json", "--timeout", "120000", "--file", f];
+      const nativeProduct = process.env.OCU_BIN && path.basename(process.env.OCU_BIN) === "OpenComputerUse";
+      out = nativeProduct
+        ? execFileSync("node", [path.resolve("experiments/parity/product-js.mjs"), ...args], {
+            encoding: "utf8", env: { OPEN_COMPUTER_USE_ACTION_READ_BACK: "0", ...process.env }, timeout: 180000 })
+        : execFileSync(process.env.OCU_BIN || "ocu", args, {
+            encoding: "utf8", env: { OPEN_COMPUTER_USE_ACTION_READ_BACK: "0", ...process.env }, timeout: 180000 });
+    } finally { fs.unlinkSync(f); }
   }
 } finally {
   fs.rmSync(LOCK, { recursive: true, force: true });
+}
+if (engine === "ocu") {
+  const result = JSON.parse(out);
+  out = (result.content ?? []).filter(item => item.type === "text").map(item => item.text).join("\n");
+  if (process.env.OCU_PRODUCT_SNAPSHOT) {
+    const marker = out.split("\n").find(line => line.startsWith("SNAPSHOTJSON "));
+    if (!marker) throw new Error("product snapshot marker missing");
+    fs.writeFileSync(process.env.OCU_PRODUCT_SNAPSHOT, JSON.parse(marker.slice("SNAPSHOTJSON ".length)));
+  }
 }
 if (engine === "codex" && process.env.OCU_CODEX_SNAPSHOT) {
   const snapshot = out.match(/SNAPSHOTJSON ("(?:[^"\\]|\\.)*")/);

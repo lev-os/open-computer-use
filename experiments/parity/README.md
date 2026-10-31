@@ -43,3 +43,9 @@ Semantic AX fixtures run the production renderer with independent logical target
 Set `OCU_SWIFT_LOG_DIR` when invoking `verify-swift.mjs` through a relay with bounded stdout. It saves complete build/test logs privately and emits a short summary. This avoids treating clipped test output as a complete test record.
 
 The direct benchmark retains the previous snapshot's element handles until the new read replaces them, matching the production action-record lifetime. Attribute values still use a fresh per-walk cache. App-level focus/window/menu queries remain outside the traversal cache, matching SnapshotBuilder. Optional snapshot capture writes only the last tree after the final timed read, so artifact I/O does not run between timed samples. The timed-read count and warmup policy are unchanged.
+
+## Built product path
+
+`OCU_BIN="$PWD/.build/release/OpenComputerUse" node experiments/parity/bench.mjs ocu Discord 5` uses the repository's actual `ocu js` launcher, Worker API and native MCP process. Run that node script through the desktop relay when the pane is outside the console session. The test runner disables app-agent forwarding so the selected binary is measured rather than a separately packaged agent; signed app-agent acceptance remains separate.
+
+The probe now calls the same production SnapshotBuilder with read-only recovery, full text and AX-only observation. JS `getAXState()` defaults to the same full-text AX-only observation. Explicit `includeScreenshot: true` restores capture; use that or `getAXStateAndScreenshot()` before screenshot-coordinate actions. The native `get_app_state` combined observation and its 500-character default remain unchanged for compatibility. The AX getter removes only the exact separate screenshot-omission note; all UI text and other warnings remain.

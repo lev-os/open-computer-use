@@ -297,7 +297,7 @@ enum SnapshotBuilder {
         )
 
         var renderer = TreeRenderer(context: context)
-        TimingLog.measure("snapshot.tree_walk") { AXSnapshotReadCache.withSnapshot { renderer.render(rootElement) } }
+        TimingLog.measure("snapshot.tree_walk") { AXReadStatistics.measureTree { AXSnapshotReadCache.withSnapshot { renderer.render(rootElement) } } }
 
         // Pin the window's visible state (WindowServer occlusion notifications
         // off) so covering it or moving it to another Space later does not hide
@@ -313,7 +313,7 @@ enum SnapshotBuilder {
                 for _ in 0..<webAreaRewalkAttempts {
                     Thread.sleep(forTimeInterval: webAreaRewalkInterval)
                     renderer = TreeRenderer(context: context)
-                    AXSnapshotReadCache.withSnapshot { renderer.render(rootElement) }
+                    AXReadStatistics.measureTree { AXSnapshotReadCache.withSnapshot { renderer.render(rootElement) } }
                     if renderer.hasWebArea {
                         break
                     }
@@ -330,7 +330,7 @@ enum SnapshotBuilder {
         if let menuBar = copyElement(appElement, attribute: kAXMenuBarAttribute),
            !CFEqual(menuBar, rootElement)
         {
-            AXSnapshotReadCache.withSnapshot { renderer.render(menuBar) }
+            AXReadStatistics.measureTree { AXSnapshotReadCache.withSnapshot { renderer.render(menuBar) } }
         }
 
         var treeLines = renderer.lines
@@ -2646,7 +2646,7 @@ public enum AccessibilityReadBenchmark {
         public let axCalls: [String: Int]
         public let lineMilliseconds: Double
         // Match the production snapshot lifetime: action targets stay alive until the next read replaces them.
-        let retainedRecords: [Int: ElementRecord]
+        let retainedSnapshot: AppSnapshot
     }
 
     public static func read(pid: Int32, name: String, bundleIdentifier: String) throws -> Result {
@@ -2658,39 +2658,19 @@ public enum AccessibilityReadBenchmark {
         let previous = Thread.current.threadDictionary[AXReadStatistics.key]
         Thread.current.threadDictionary[AXReadStatistics.key] = stats
         defer { Thread.current.threadDictionary[AXReadStatistics.key] = previous }
-        let app = AXUIElementCreateApplication(pid)
-        guard let window = copyElement(app, attribute: kAXFocusedWindowAttribute)
-                ?? copyArray(app, attribute: kAXWindowsAttribute)?.first,
-              boolValue(of: window, attribute: kAXMinimizedAttribute) != true else {
-            throw ComputerUseError.stateUnavailable("Direct benchmark requires an existing non-minimized AX window")
+        let app = try AppDiscovery.resolveRunning(bundleIdentifier)
+        guard app.pid == pid else {
+            throw ComputerUseError.stateUnavailable("Direct benchmark PID does not match the running app")
         }
-        let focused = copyElement(app, attribute: kAXFocusedUIElementAttribute)
-        let context = RenderContext(windowBounds: resolveLocalFrame(of: window, windowBounds: nil),
-                                    focusedElement: focused, textLimit: .max, treeLimits: .defaults)
-        let start = TimingLog.now()
-        let menu = copyElement(app, attribute: kAXMenuBarAttribute)
-        var renderer = TreeRenderer(context: context)
-        // Match SnapshotBuilder: only tree traversal uses batched attribute
-        // caching. App-level focus/window lookups must not prefetch AXChildren.
-        AXSnapshotReadCache.withSnapshot {
-            renderer.render(window)
-            if let menu, !CFEqual(menu, window) { renderer.render(menu) }
-        }
-        let treeMilliseconds = (TimingLog.now() - start) * 1000
+        let snapshot = try SnapshotBuilder.build(for: app, textLimit: .max, treeLimits: .defaults,
+            recoveryPolicy: .readOnly, observation: SnapshotObservationOptions(includeAX: true, includeScreenshot: false))
         let textStart = TimingLog.now()
-        var lines = ["App=\(bundleIdentifier) (pid \(pid))",
-                     "Window: \(quoted(displayWindowTitle(stringValue(of: window, attribute: kAXTitleAttribute), appName: name))), App: \(name).", AXTreeTextFormatting.legend]
-        lines.append(contentsOf: renderer.lines)
-        if let selected = focused.flatMap({ copySelectedText($0, textLimit: .max) }), !selected.isEmpty {
-            lines.append(""); lines.append("Selected text: [\(selected)]")
-        } else if let summary = renderer.focusedSummary {
-            lines.append(""); lines.append("The focused UI element is \(summary).")
-        }
-        let text = lines.joined(separator: "\n")
-        let valid = renderer.records.allSatisfy { $0.key == $0.value.index && $0.value.element != nil }
-        return Result(text: text, elementCount: renderer.records.count, indexesValid: valid,
-                      treeMilliseconds: treeMilliseconds, textMilliseconds: (TimingLog.now() - textStart) * 1000,
+        let text = snapshot.renderedText
+        let textMilliseconds = (TimingLog.now() - textStart) * 1000
+        let valid = snapshot.elements.allSatisfy { $0.key == $0.value.index && $0.value.element != nil }
+        return Result(text: text, elementCount: snapshot.elements.count, indexesValid: valid,
+                      treeMilliseconds: stats.treeMilliseconds, textMilliseconds: textMilliseconds,
                       axMilliseconds: stats.milliseconds, axCalls: stats.calls, lineMilliseconds: stats.textMilliseconds,
-                      retainedRecords: renderer.records)
+                      retainedSnapshot: snapshot)
     }
 }
