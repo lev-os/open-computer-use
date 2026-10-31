@@ -49,7 +49,7 @@ try {
   const dragPad = fixture.elements.find(e => e.identifier === 'fixture-drag-pad').frame;
   const drag = [[dragPad.x + 20, dragPad.y + 30], [dragPad.x + 100, dragPad.y + 40]];
   // This exact sequence executes in each engine session. Startup is outside timers.
-  async function sequence(a, count, points, windowWidth, checkMode, inputValue) {
+  async function sequence(a, count, points, windowWidth, checkMode, inputValue, padHeight) {
     var rows = [];
     var state = String(await a.getAXState({ emit: false, disableDiffing: true }));
     // Coordinate actions use screenshot pixels, fixture frames use window points.
@@ -100,7 +100,12 @@ try {
           var afterOffset = state.match(/Scroll offset: ([-\d]+)/)?.[1];
           verified = beforeOffset !== undefined && afterOffset !== undefined && beforeOffset !== afterOffset;
         }
-        if (name === 'drag') verified = /Last drag: from/.test(state) && state.match(/Last drag:[^\n]*/)?.[0] !== previousState.match(/Last drag:[^\n]*/)?.[0];
+        if (name === 'drag') {
+          var gesture = state.match(/Last drag: from \((-?\d+), (-?\d+)\) to \((-?\d+), (-?\d+)\)/);
+          var expected = [20 + run * 3, padHeight - 30, 100 + run * 5, padHeight - 40];
+          verified = Boolean(gesture) && gesture.slice(1).every((value, i) => Math.abs(Number(value) - expected[i]) <= 1) &&
+            state.match(/Last drag:[^\n]*/)?.[0] !== previousState.match(/Last drag:[^\n]*/)?.[0];
+        }
       }
       if (name.startsWith('reject')) verified = Boolean(error) && !readError;
       rows.push({ run, action: name, action_ms: actionMs, read_ms: Date.now() - t, verified, screenshot_width: width || null,
@@ -142,7 +147,7 @@ try {
       await step(i, 'scroll', () => a.scroll(find('fixture-scroll-view'), Number(state.match(/Scroll offset: ([-\d]+)/)?.[1]) > 0 ? 'down' : 'up', 1));
       await step(i, 'drag', () => {
         if (coordinateError) throw new Error(coordinateError);
-        return a.drag(points[0].map(v => v * scale), [(points[1][0] + i * 5) * scale, points[1][1] * scale]);
+        return a.drag([(points[0][0] + i * 3) * scale, points[0][1] * scale], [(points[1][0] + i * 5) * scale, points[1][1] * scale]);
       });
     }
     if (checkMode === 'standard') {
@@ -219,7 +224,7 @@ try {
   let rows;
   if (engine === 'codex') {
     const cu = path.join(os.homedir(), '.agents/skills/tools/references/computer-use/scripts/cu.mjs');
-    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\n${process.env.ACT_BENCH_CAPTURE ? 'await shot(actFixture, "act-fixture-current");' : ''}\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width}, ${JSON.stringify(process.env.OCU_CHECK_MODE || '')}, ${fixtureInputValue.toString()});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
+    const code = `var actFixture = await cua.getApp(${JSON.stringify(app)});\n${process.env.ACT_BENCH_CAPTURE ? 'await shot(actFixture, "act-fixture-current");' : ''}\nvar actionRows = await (${sequence.toString()})(actFixture, ${runs}, ${JSON.stringify(drag)}, ${fixture.windowBounds.width}, ${JSON.stringify(process.env.OCU_CHECK_MODE || '')}, ${fixtureInputValue.toString()}, ${dragPad.height});\nnodeRepl.write('ACT_BENCH ' + JSON.stringify(actionRows));`;
     execFileSync('node', [cu, 'reset'], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 30000 });
     let output = execFileSync('node', [cu, 'js', code], { encoding: 'utf8', env: { ...process.env, CU_ENGINE: 'codex' }, timeout: 180000, maxBuffer: 8 * 1024 * 1024 });
     const spilled = output.match(/full text in (\S+?\.txt)/);
@@ -230,7 +235,7 @@ try {
   } else {
     native = new NativeSession();
     await native.rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'act-bench', version: '1' } });
-    rows = await sequence(native.facade(), runs, drag, fixture.windowBounds.width, process.env.OCU_CHECK_MODE || '', fixtureInputValue);
+    rows = await sequence(native.facade(), runs, drag, fixture.windowBounds.width, process.env.OCU_CHECK_MODE || '', fixtureInputValue, dragPad.height);
   }
   const idle = Math.min(5000, Math.max(0, Number(process.env.ACT_BENCH_IDLE_MS || 0)));
   if (idle) await new Promise(resolve => setTimeout(resolve, idle));

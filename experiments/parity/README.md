@@ -98,3 +98,7 @@ The GUI Swift suite passes: 407 tests, 8 skipped, 0 failures. The background-pan
 A standalone `.build/.../OpenComputerUse` runs the service linked into that binary. An executable inside an OCU `.app` retains app-agent routing for its own bundle. Installed-app discovery supports onboarding and permissions; it does not replace a standalone build's automation code. `OPEN_COMPUTER_USE_DEBUG_ROUTING=1` prints the selected route and executable on stderr. The separate probe remains useful for diagnostics, but product acceptance uses `OCU_BIN` pointing at `OpenComputerUse`.
 
 `agent-info.mjs` reads app-agent path/build metadata without a GUI tool call. Diagnostic agents use a lane-owned socket namespace. Its termination option accepts only that diagnostic namespace prefix.
+
+Targeted drag events now carry the captured window ID, window-local coordinates, per-step deltas and a shared gesture identity. Every event checks the GUI session and window ownership. App-local drags can work through the standalone product with the relay's permissions. Global pointer fallbacks remain disabled in the benchmark. Cross-app drag/drop and window moves remain separate cases.
+
+The fixture records the real mouse-drag callback count. Start and end points vary per run, and the benchmark checks both endpoints within one point. This detects a dropped mouse-down or a callback from the wrong region and makes repeated gestures observable.

@@ -106,6 +106,7 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
     private let dragPadView = DragPadView(frame: NSRect(x: 0, y: 0, width: 320, height: 120))
     private var scrollView: NSScrollView!
     private var counter = 0
+    private var dragEventCount = 0
     private var activationLossCount = 0
     private var keyWindowLossCount = 0
     private weak var observedScrollView: NSScrollView?
@@ -185,8 +186,10 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         dragPadView.clipsToBounds = true
         dragPadView.setAccessibilityIdentifier("fixture-drag-pad")
         dragPadView.onDrag = { [weak self] value in
-            self?.dragLabel.stringValue = "Last drag: \(value)"
-            self?.updateExportedState()
+            guard let self else { return }
+            self.dragEventCount += 1
+            self.dragLabel.stringValue = "Last drag: \(value) [events: \(self.dragEventCount)]"
+            self.updateExportedState()
         }
 
         let stack = NSStackView(views: [

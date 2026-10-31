@@ -204,7 +204,7 @@ enum SkyClickDispatcher {
         }
     }
 
-    private static func validate(target: SkyClickTarget) throws {
+    static func validate(target: SkyClickTarget) throws {
         guard
             target.screenPoint.x.isFinite,
             target.screenPoint.y.isFinite,
@@ -238,7 +238,7 @@ enum SkyClickDispatcher {
         }
     }
 
-    private static func stamp(
+    static func stamp(
         _ event: CGEvent,
         target: SkyClickTarget,
         windowPoint: CGPoint,

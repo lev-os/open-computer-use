@@ -272,9 +272,9 @@ func fullActionReadBackEnabled(environment: [String: String]) -> Bool {
 /// How a `drag` is delivered. `drag` has no method argument; the path is decided
 /// by the same process-level gate that authorizes `click_method=global`.
 enum DragDeliveryPath: String, CaseIterable {
-    /// `CGEvent.postToPid`: never moves the system pointer, but the events do not
-    /// pass through the window server, so window-server drag sessions (window
-    /// moves, text selection, Finder drag-and-drop) are not driven.
+    /// Window-addressed `CGEvent.postToPid`: does not move the system pointer.
+    /// App-local view drags are supported; system-owned cross-app drag sessions
+    /// and window moves need separate validation.
     case appPost = "app_post"
     /// `.cghidEventTap`: drives window-server drag sessions and may move the
     /// real pointer or change foreground focus.
@@ -288,7 +288,7 @@ func dragDeliveryPath(environment: [String: String]) -> DragDeliveryPath {
 func dragDeliveryNote(for path: DragDeliveryPath) -> String {
     switch path {
     case .appPost:
-        return "Drag delivered via app_post: mouse events were posted directly to the target process and the system pointer did not move. This path cannot drive window-server drag sessions such as window moves, text selection, or Finder drag-and-drop. If the drag had no effect, set OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1 in the server process environment to use the global pointer path, which may move the real pointer and change foreground focus."
+        return "Drag delivered via app_post: window-addressed events were posted directly to the target process and the system pointer did not move. The captured window and owner were checked for every event. Cross-app drag-and-drop and window moves need separate validation."
     case .global:
         return "Drag delivered via global pointer path: OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS is enabled, so the real pointer may have moved and foreground focus may have changed."
     }
@@ -2344,7 +2344,14 @@ public final class ComputerUseService {
             InputSimulation.prepareAppForGlobalPointerInput(snapshot.app)
             try InputSimulation.dragGlobally(from: eventStart, to: eventEnd)
         case .appPost:
-            try InputSimulation.dragTargeted(from: eventStart, to: eventEnd, pid: snapshot.app.pid)
+            guard let windowID = snapshot.targetWindowID, let bounds = snapshot.windowBounds else {
+                throw ComputerUseError.stateUnavailable("Targeted drag requires a captured window ID and bounds")
+            }
+            let localStart = CGPoint(x: start.x - bounds.minX, y: start.y - bounds.minY)
+            let localEnd = CGPoint(x: end.x - bounds.minX, y: end.y - bounds.minY)
+            let target = SkyClickTarget(screenPoint: eventStart, windowPoint: localStart,
+                windowBounds: bounds, windowID: windowID, pid: snapshot.app.pid)
+            try InputSimulation.dragTargeted(from: target, toScreenPoint: eventEnd, toWindowPoint: localEnd)
         }
 
         return path

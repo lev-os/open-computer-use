@@ -1602,14 +1602,14 @@ final class OpenComputerUseKitTests: XCTestCase {
         XCTAssertEqual(dragDeliveryPath(environment: ["OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS": " True "]), .global)
     }
 
-    func testDragDeliveryNoteExplainsWhyDefaultPathCannotDriveWindowServerDrags() {
+    func testDragDeliveryNoteDescribesWindowAddressingAndLimits() {
         let appPostNote = dragDeliveryNote(for: .appPost)
         XCTAssertTrue(appPostNote.hasPrefix("Drag delivered via app_post"))
         XCTAssertTrue(appPostNote.contains("system pointer did not move"))
         XCTAssertTrue(appPostNote.contains("window moves"))
-        XCTAssertTrue(appPostNote.contains("text selection"))
-        XCTAssertTrue(appPostNote.contains("Finder drag-and-drop"))
-        XCTAssertTrue(appPostNote.contains("OPEN_COMPUTER_USE_ALLOW_GLOBAL_POINTER_FALLBACKS=1"))
+        XCTAssertTrue(appPostNote.contains("window-addressed events"))
+        XCTAssertTrue(appPostNote.contains("captured window and owner"))
+        XCTAssertTrue(appPostNote.contains("Cross-app drag-and-drop and window moves need separate validation"))
 
         let globalNote = dragDeliveryNote(for: .global)
         XCTAssertTrue(globalNote.hasPrefix("Drag delivered via global pointer path"))

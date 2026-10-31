@@ -135,24 +135,70 @@ enum InputSimulation {
         Thread.sleep(forTimeInterval: 0.1)
     }
 
-    static func dragTargeted(from start: CGPoint, to end: CGPoint, pid: pid_t) throws {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else {
+    static func dragTargeted(from target: SkyClickTarget, toScreenPoint end: CGPoint, toWindowPoint localEnd: CGPoint) throws {
+        try requireUsableComputerUseSession()
+        let spi = SkyLightSPI.shared
+        guard spi.capability.isAvailable else {
+            throw ComputerUseError.stateUnavailable("Targeted drag window routing is unavailable: \(spi.capability.unavailableReason)")
+        }
+        try SkyClickDispatcher.validate(target: target)
+        let localBounds = CGRect(origin: .zero, size: target.windowBounds.size)
+        guard end.x.isFinite, end.y.isFinite, localBounds.contains(localEnd) else {
+            throw ComputerUseError.invalidArguments("drag endpoint is outside the captured window")
+        }
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
             throw ComputerUseError.message("Failed to create targeted event source.")
         }
-
-        try postMouseEventToPid(type: .mouseMoved, source: source, point: start, button: .left, clickState: 1, pid: pid)
-        try postMouseEventToPid(type: .leftMouseDown, source: source, point: start, button: .left, clickState: 1, pid: pid)
-
-        for step in 1...10 {
-            let progress = CGFloat(step) / 10
-            let point = CGPoint(
-                x: start.x + ((end.x - start.x) * progress),
-                y: start.y + ((end.y - start.y) * progress)
-            )
-            try postMouseEventToPid(type: .leftMouseDragged, source: source, point: point, button: .left, clickState: 1, pid: pid)
+        let focus: SkyLightSyntheticFocusContext?
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier == target.pid {
+            focus = nil
+        } else {
+            let context = try spi.beginSyntheticTargetFocus(targetPID: target.pid, targetWindowID: target.windowID)
+            focus = context
+            do { try spi.makeSyntheticTargetWindowKey(context) }
+            catch { try? spi.endSyntheticTargetFocus(context); throw error }
+            if InputTiming.focusRecordSettle > 0 { Thread.sleep(forTimeInterval: InputTiming.focusRecordSettle) }
         }
-
-        try postMouseEventToPid(type: .leftMouseUp, source: source, point: end, button: .left, clickState: 1, pid: pid)
+        let gesture = dragGestureEventNumber()
+        let group = Int64(DispatchTime.now().uptimeNanoseconds % 1_000_000_000)
+        func post(_ type: CGEventType, _ screen: CGPoint, _ local: CGPoint, _ delta: CGSize? = nil) throws {
+            try requireUsableComputerUseSession()
+            try SkyClickDispatcher.validate(target: target)
+            guard let event = CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: screen, mouseButton: .left) else {
+                throw ComputerUseError.message("Failed to create targeted drag event")
+            }
+            try SkyClickDispatcher.stamp(event, target: target, windowPoint: local,
+                clickState: type == .mouseMoved ? 0 : 1, phase: 3, clickGroupID: group, spi: spi)
+            applyDragMotionFields(to: event, delta: delta, eventNumber: gesture)
+            event.postToPid(target.pid)
+            Thread.sleep(forTimeInterval: 0.03)
+        }
+        var lastScreen = target.screenPoint
+        var lastLocal = target.windowPoint
+        var pressed = false
+        do {
+            try post(.mouseMoved, lastScreen, lastLocal)
+            try post(.leftMouseDown, lastScreen, lastLocal)
+            pressed = true
+            Thread.sleep(forTimeInterval: 0.05)
+            let steps = dragStepCount(from: target.screenPoint, to: end)
+            for step in 1...steps {
+                let fraction = CGFloat(step) / CGFloat(steps)
+                let screen = CGPoint(x: target.screenPoint.x + (end.x - target.screenPoint.x) * fraction,
+                                     y: target.screenPoint.y + (end.y - target.screenPoint.y) * fraction)
+                let local = CGPoint(x: target.windowPoint.x + (localEnd.x - target.windowPoint.x) * fraction,
+                                    y: target.windowPoint.y + (localEnd.y - target.windowPoint.y) * fraction)
+                try post(.leftMouseDragged, screen, local, CGSize(width: screen.x - lastScreen.x, height: screen.y - lastScreen.y))
+                lastScreen = screen; lastLocal = local
+            }
+            try post(.leftMouseUp, lastScreen, lastLocal)
+            pressed = false
+        } catch {
+            if pressed { try? post(.leftMouseUp, lastScreen, lastLocal) }
+            if let focus { try? spi.endSyntheticTargetFocus(focus) }
+            throw error
+        }
+        if let focus { try spi.endSyntheticTargetFocus(focus) }
     }
 
     static func dragGlobally(from start: CGPoint, to end: CGPoint) throws {
