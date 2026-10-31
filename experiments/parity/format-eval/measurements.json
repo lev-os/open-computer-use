@@ -1,0 +1,181 @@
+{
+  "sourceCommit": "004854ee077e19990700e6417e0acb20a14ca142",
+  "codexDefaults": {
+    "model": "gpt-6.1-sol",
+    "model_reasoning_effort": "low"
+  },
+  "rows": [
+    {
+      "app": "discord",
+      "model": "codex",
+      "format": "tab4",
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 25409,
+      "cachedInputTokens": 7552,
+      "wrong": []
+    },
+    {
+      "app": "discord",
+      "model": "codex",
+      "format": "level",
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 25407,
+      "cachedInputTokens": 7552,
+      "wrong": []
+    },
+    {
+      "app": "discord",
+      "model": "codex",
+      "format": "codex",
+      "status": "measured",
+      "correct": 38,
+      "total": 39,
+      "inputTokens": 23471,
+      "cachedInputTokens": 7552,
+      "wrong": [
+        {
+          "id": "q37",
+          "question": "For the deepest (break ties by first text occurrence) node with role \"group/container\": What is its nesting depth, with a root at depth 0?",
+          "property": "depth",
+          "expected": 12,
+          "actual": 11
+        }
+      ]
+    },
+    {
+      "app": "discord",
+      "model": "claude",
+      "format": "tab4",
+      "status": "unmeasured",
+      "failureKind": "CLI failure"
+    },
+    {
+      "app": "discord",
+      "model": "claude",
+      "format": "level",
+      "status": "unmeasured",
+      "failureKind": "skipped after CLI failure"
+    },
+    {
+      "app": "discord",
+      "model": "claude",
+      "format": "codex",
+      "status": "unmeasured",
+      "failureKind": "skipped after CLI failure"
+    },
+    {
+      "app": "brave",
+      "model": "codex",
+      "format": "tab4",
+      "status": "measured",
+      "correct": 36,
+      "total": 39,
+      "inputTokens": 15805,
+      "cachedInputTokens": 7552,
+      "wrong": [
+        {
+          "id": "q05",
+          "question": "For the node with exact role \"button\" and exact name \"Back\": Is it marked settable?",
+          "property": "settable",
+          "expected": true,
+          "actual": false
+        },
+        {
+          "id": "q12",
+          "question": "For the node with exact role \"button\" and exact name \"Forward\": Is it marked settable?",
+          "property": "settable",
+          "expected": true,
+          "actual": false
+        },
+        {
+          "id": "q26",
+          "question": "For the first node with role \"text field\": Is it marked settable?",
+          "property": "settable",
+          "expected": true,
+          "actual": false
+        }
+      ]
+    },
+    {
+      "app": "brave",
+      "model": "codex",
+      "format": "level",
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 15816,
+      "cachedInputTokens": 7552,
+      "wrong": []
+    },
+    {
+      "app": "brave",
+      "model": "codex",
+      "format": "codex",
+      "status": "measured",
+      "correct": 39,
+      "total": 39,
+      "inputTokens": 15409,
+      "cachedInputTokens": 7552,
+      "wrong": []
+    },
+    {
+      "app": "brave",
+      "model": "claude",
+      "format": "tab4",
+      "status": "unmeasured",
+      "failureKind": "skipped after CLI failure"
+    },
+    {
+      "app": "brave",
+      "model": "claude",
+      "format": "level",
+      "status": "unmeasured",
+      "failureKind": "skipped after CLI failure"
+    },
+    {
+      "app": "brave",
+      "model": "claude",
+      "format": "codex",
+      "status": "unmeasured",
+      "failureKind": "skipped after CLI failure"
+    }
+  ],
+  "aggregate": [
+    {
+      "format": "tab4",
+      "correct": 75,
+      "total": 78,
+      "inputTokens": 41214
+    },
+    {
+      "format": "level",
+      "correct": 78,
+      "total": 78,
+      "inputTokens": 41223
+    },
+    {
+      "format": "codex",
+      "correct": 77,
+      "total": 78,
+      "inputTokens": 38880
+    }
+  ],
+  "size": [
+    {
+      "app": "discord",
+      "tab4": 39409,
+      "level": 46762,
+      "codex": 41493
+    },
+    {
+      "app": "brave",
+      "tab4": 11809,
+      "level": 12997,
+      "codex": 11904
+    }
+  ]
+}

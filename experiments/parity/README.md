@@ -164,3 +164,7 @@ A standalone `.build/.../OpenComputerUse` runs the service linked into that bina
 Targeted drag events now carry the captured window ID, window-local coordinates, per-step deltas and a shared gesture identity. Every event checks the GUI session and window ownership. App-local drags can work through the standalone product with the relay's permissions. Global pointer fallbacks remain disabled in the benchmark. Cross-app drag/drop and window moves remain separate cases.
 
 The fixture records the real mouse-drag callback count. Start and end points vary per run, and the benchmark checks both endpoints within one point. This detects a dropped mouse-down or a callback from the wrong region and makes repeated gestures observable.
+
+## Model comprehension
+
+See [format-eval](format-eval/README.md) for the deterministic question sets, private capture workflow, CLI supervisor and exact scorer. [Results](format-eval/RESULTS.md) separate model accuracy from character size, input tokens and provider failures.
