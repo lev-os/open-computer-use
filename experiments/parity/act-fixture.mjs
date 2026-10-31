@@ -13,7 +13,7 @@ const executable = path.join(contents, 'MacOS/ActionParityFixture');
 const statePath = path.join(os.tmpdir(), 'open-computer-use-fixture/state.json');
 const mode = process.argv[2];
 const close = mode === 'close';
-if (process.argv.length > 3 || (mode && !['close', 'ignore-wheel', 'reject-values'].includes(mode))) throw new Error('usage: node act-fixture.mjs [close|ignore-wheel|reject-values]');
+if (process.argv.length > 3 || (mode && !['close', 'ignore-wheel', 'reject-values', 'mismatch-drag'].includes(mode))) throw new Error('usage: node act-fixture.mjs [close|ignore-wheel|reject-values|mismatch-drag]');
 const lock = '/tmp/ocu-parity.lock';
 // Serialize preparation/cleanup with reads and actions without stealing a lock.
 for (const deadline = Date.now() + 600000;;) {

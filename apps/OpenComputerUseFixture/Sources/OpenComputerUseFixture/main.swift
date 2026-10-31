@@ -21,6 +21,14 @@ final class IgnoringFixtureInputField: NSTextField {
 }
 
 @MainActor
+final class DragReceiptLabel: NSTextField {
+    var metadata: (() -> String)?
+    override func accessibilityValue() -> String? {
+        stringValue + "\n" + (metadata?() ?? "")
+    }
+}
+
+@MainActor
 final class KeyCaptureView: NSView {
     var onKey: ((String) -> Void)?
 
@@ -63,16 +71,39 @@ final class KeyCaptureView: NSView {
 @MainActor
 final class DragPadView: NSView {
     var onDrag: ((String) -> Void)?
+    var onReceipt: ((DragEndpointReceipt) -> Void)?
     private var dragStart: CGPoint?
+    private var receiptStart: CGPoint?
+    private var receiptEnd: CGPoint?
+    private var sequence = 0
+
+    private func windowPoint(_ event: NSEvent) -> CGPoint {
+        CGPoint(x: event.locationInWindow.x, y: (window?.frame.height ?? 0) - event.locationInWindow.y)
+    }
 
     override func mouseDown(with event: NSEvent) {
         dragStart = convert(event.locationInWindow, from: nil)
+        sequence += 1
+        receiptStart = windowPoint(event)
+        receiptEnd = nil
     }
 
     override func mouseDragged(with event: NSEvent) {
         let current = convert(event.locationInWindow, from: nil)
         let start = dragStart ?? current
+        receiptEnd = windowPoint(event)
         onDrag?("from (\(Int(start.x)), \(Int(start.y))) to (\(Int(current.x)), \(Int(current.y)))")
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard let start = receiptStart, let end = receiptEnd else { return }
+        // Hostile mode simulates a consumer that delivered a different endpoint.
+        let shift: CGFloat = CommandLine.arguments.contains("--mismatch-drag") ? 12 : 0
+        onReceipt?(DragEndpointReceipt(sequence: sequence, start: start,
+            end: CGPoint(x: end.x + shift, y: end.y), mouseUp: windowPoint(event)))
+        dragStart = nil
+        receiptStart = nil
+        receiptEnd = nil
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -101,12 +132,13 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         ? IgnoringFixtureInputField(string: "seed") : NSTextField(string: "seed")
     private let keyLabel = NSTextField(labelWithString: "Last key: none")
     private let scrollLabel = NSTextField(labelWithString: "Scroll offset: 0")
-    private let dragLabel = NSTextField(labelWithString: "Last drag: none")
+    private let dragLabel = DragReceiptLabel(labelWithString: "Last drag: none")
     private let keyCaptureView = KeyCaptureView(frame: NSRect(x: 0, y: 0, width: 320, height: 72))
     private let dragPadView = DragPadView(frame: NSRect(x: 0, y: 0, width: 320, height: 120))
     private var scrollView: NSScrollView!
     private var counter = 0
     private var dragEventCount = 0
+    private var dragReceipt: DragEndpointReceipt?
     private var activationLossCount = 0
     private var keyWindowLossCount = 0
     private weak var observedScrollView: NSScrollView?
@@ -182,9 +214,14 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         scrollView = makeScrollView()
         scrollView.setAccessibilityIdentifier("fixture-scroll-view")
 
-        dragLabel.setAccessibilityIdentifier("fixture-drag-status")
+        dragLabel.setAccessibilityIdentifier(dragVerificationIdentifier)
+        dragLabel.metadata = { [weak self] in self?.dragMetadata() ?? "" }
         dragPadView.clipsToBounds = true
         dragPadView.setAccessibilityIdentifier("fixture-drag-pad")
+        dragPadView.onReceipt = { [weak self] receipt in
+            self?.dragReceipt = receipt
+            self?.updateExportedState()
+        }
         dragPadView.onDrag = { [weak self] value in
             guard let self else { return }
             self.dragEventCount += 1
@@ -404,6 +441,15 @@ final class FixtureAppDelegate: NSObject, NSApplicationDelegate, NSTextFieldDele
         }
 
         return value.substring(with: range)
+    }
+
+    private func dragMetadata() -> String {
+        guard let window, let contentView = window.contentView else { return "" }
+        contentView.layoutSubtreeIfNeeded()
+        let value = DragVerificationEnvelope(pid: getpid(), windowID: UInt32(window.windowNumber),
+            bounds: windowBoundsInQuartzCoordinates(), pad: localRect(for: dragPadView, in: contentView), receipt: dragReceipt)
+        guard let data = try? JSONEncoder().encode(value) else { return "" }
+        return dragVerificationPrefix + String(decoding: data, as: UTF8.self)
     }
 
     private func updateExportedState() {

@@ -938,7 +938,11 @@ public final class ComputerUseService {
             throw ComputerUseError.stateUnavailable("drag requires a captured window")
         }
         try requireActionTarget(window, in: snapshot)
-        let before = actionObservedValues(snapshot)
+        guard let receiptElement = snapshot.elements.values.first(where: { $0.identifier == dragVerificationIdentifier })?.element,
+              let bounds = snapshot.windowBounds else {
+            throw ComputerUseError.stateUnavailable("drag cannot verify delivered endpoints: the target does not expose an endpoint acknowledgement")
+        }
+        let before = try readDragVerification(receiptElement, snapshot: snapshot)
         let start = try screenshotToGlobalPoint(snapshot: snapshot, x: fromX, y: fromY)
         let end = try screenshotToGlobalPoint(snapshot: snapshot, x: toX, y: toY)
         let path = try performDragEvent(
@@ -947,12 +951,13 @@ public final class ComputerUseService {
             targetDescription: "from=(\(Int(fromX)), \(Int(fromY))) to=(\(Int(toX)), \(Int(toY)))",
             snapshot: snapshot
         )
-        let after = try requireObservedActionChange("drag", before: before,
-            validate: { try requireActionTarget(window, in: snapshot) },
-            read: { actionObservedValues(snapshot) })
+        try verifyDeliveredDrag(after: before.receipt?.sequence ?? 0,
+            start: CGPoint(x: start.x - bounds.minX, y: start.y - bounds.minY),
+            end: CGPoint(x: end.x - bounds.minX, y: end.y - bounds.minY),
+            read: { try readDragVerification(receiptElement, snapshot: snapshot).receipt })
         let result = try actionResult(for: query)
         return appendingDragDeliveryNote(
-            to: actionReadBack ? appendingObservedActionChange(to: result, name: "drag", before: before, after: after) : result,
+            to: result,
             path: path
         )
     }
